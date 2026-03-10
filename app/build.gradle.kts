@@ -14,11 +14,13 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "BASE_URL", "\"http://10.0.2.2/AJES/\"")
+        // Physical phone: use your PC's IP (same Wi‑Fi as phone). Find it: ipconfig (Windows) → IPv4 Address
+        // Example: 192.168.1.100 — change to your PC's actual IP
+        buildConfigField("String", "BASE_URL", "\"http://192.168.1.6/AJES/\"")
     }
     buildTypes {
         debug {
-            buildConfigField("String", "BASE_URL", "\"http://10.0.2.2/AJES/\"")
+            buildConfigField("String", "BASE_URL", "\"http://192.168.1.6/AJES/\"")
         }
         release {
             isMinifyEnabled = false

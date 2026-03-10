@@ -7,10 +7,8 @@ import retrofit2.HttpException
 
 class ChatRepository(
     private val chatApi: ChatApi,
-    private val csrfFetcher: com.example.ajeschat.network.CsrfFetcher?
+    private val csrfFetcher: com.example.ajeschat.network.CsrfFetcher? = null
 ) {
-
-    private fun csrfToken(): String? = csrfFetcher?.fetchCsrfToken()
 
     suspend fun getUsers(): Result<List<ChatUser>> = withContext(Dispatchers.IO) {
         runCatching {
@@ -34,14 +32,14 @@ class ChatRepository(
         val trimmed = content.trim()
         if (trimmed.isEmpty()) return@withContext Result.failure(IllegalArgumentException("Message is empty"))
         runCatching {
-            val res = chatApi.send(receiverId, trimmed, csrfToken())
+            val res = chatApi.send(receiverId, trimmed)
             if (!res.isSuccessful) throw HttpException(res)
         }
     }
 
     suspend fun unsend(messageId: Int, scope: String, withId: Int): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
-            val res = chatApi.unsend(messageId, scope, withId, csrfToken())
+            val res = chatApi.unsend(messageId, scope, withId)
             if (!res.isSuccessful) throw HttpException(res)
         }
     }

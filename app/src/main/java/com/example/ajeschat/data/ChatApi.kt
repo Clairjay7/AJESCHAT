@@ -22,8 +22,7 @@ interface ChatApi {
     @POST("chat/send")
     suspend fun send(
         @Field("receiver_id") receiverId: Int,
-        @Field("content") content: String,
-        @Field("csrf_test_name") csrfToken: String? = null
+        @Field("content") content: String
     ): Response<okhttp3.ResponseBody>
 
     @FormUrlEncoded
@@ -31,7 +30,6 @@ interface ChatApi {
     suspend fun unsend(
         @Field("message_id") messageId: Int,
         @Field("scope") scope: String,
-        @Field("with_id") withId: Int,
-        @Field("csrf_test_name") csrfToken: String? = null
+        @Field("with_id") withId: Int
     ): Response<okhttp3.ResponseBody>
 }

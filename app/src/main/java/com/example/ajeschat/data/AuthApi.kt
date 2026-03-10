@@ -1,25 +1,44 @@
 package com.example.ajeschat.data
 
-import okhttp3.ResponseBody
-import retrofit2.Call
-import retrofit2.http.Field
-import retrofit2.http.FormUrlEncoded
-import retrofit2.http.GET
+import retrofit2.Response
+import retrofit2.http.Body
 import retrofit2.http.POST
 
 /**
- * Compatible with existing AJES Auth. POST auth/login with form body; session via cookies.
+ * Uses AJES token API: POST api/login (JSON) returns token; POST api/logout with Bearer.
+ * Same accounts as web (users table); chat endpoints accept Authorization: Bearer.
  */
 interface AuthApi {
 
-    @FormUrlEncoded
-    @POST("auth/login")
-    fun login(
-        @Field("username") username: String,
-        @Field("password") password: String,
-        @Field("csrf_test_name") csrfToken: String? = null
-    ): Call<ResponseBody>
+    @POST("api/login")
+    suspend fun login(@Body body: LoginRequest): Response<LoginResponse>
 
-    @GET("auth/logout")
-    fun logout(): Call<ResponseBody>
+    @POST("api/logout")
+    suspend fun logout(): Response<LogoutResponse>
 }
+
+data class LoginRequest(
+    val username: String? = null,
+    val email: String? = null,
+    val password: String
+)
+
+data class LoginResponse(
+    val status: String?,
+    val data: LoginData?,
+    val message: String?
+)
+
+data class LoginData(
+    val user_id: Int,
+    val username: String?,
+    val name: String?,
+    val role: String?,
+    val token: String?
+)
+
+data class LogoutResponse(
+    val status: String?,
+    val data: Any?,
+    val message: String?
+)

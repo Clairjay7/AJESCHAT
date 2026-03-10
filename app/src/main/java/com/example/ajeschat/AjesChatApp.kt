@@ -17,16 +17,16 @@ class AjesChatApp : Application() {
         super.onCreate()
         ApiModule.init(this)
         val sessionStore = SessionStore(this)
-        sessionStore.load()?.let { SessionHolder.updateSession(it) }
+        sessionStore.load()?.let { s ->
+            if (s.token.isNotBlank()) SessionHolder.updateSession(s) else sessionStore.clear()
+        }
         authRepository = AuthRepository(
             ApiModule.getAuthApi(),
-            ApiModule.getCsrfFetcher(),
-            sessionStore,
-            ApiModule.getCookieJar()
+            sessionStore
         )
         chatRepository = ChatRepository(
             ApiModule.getChatApi(),
-            ApiModule.getCsrfFetcher()
+            null
         )
     }
 }

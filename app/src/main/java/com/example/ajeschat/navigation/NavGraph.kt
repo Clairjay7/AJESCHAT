@@ -1,6 +1,11 @@
 package com.example.ajeschat.navigation
 
 import android.app.Application
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
@@ -17,6 +22,8 @@ import com.example.ajeschat.ui.chat.ConversationScreen
 import com.example.ajeschat.ui.chat.ConversationViewModel
 import com.example.ajeschat.ui.login.LoginScreen
 import com.example.ajeschat.ui.login.LoginViewModel
+
+private const val NAV_ANIM_DURATION = 300
 
 const val ROUTE_LOGIN = "login"
 const val ROUTE_CHAT_LIST = "chat_list"
@@ -35,11 +42,23 @@ fun AjesChatNavGraph(
     chatListViewModel: ChatListViewModel,
     startDestination: String = ROUTE_LOGIN
 ) {
+    val navTransitions = object {
+        val enter = slideInHorizontally(animationSpec = tween(NAV_ANIM_DURATION)) { it } + fadeIn(animationSpec = tween(NAV_ANIM_DURATION))
+        val exit = slideOutHorizontally(animationSpec = tween(NAV_ANIM_DURATION)) { -it } + fadeOut(animationSpec = tween(NAV_ANIM_DURATION))
+        val popEnter = slideInHorizontally(animationSpec = tween(NAV_ANIM_DURATION)) { -it } + fadeIn(animationSpec = tween(NAV_ANIM_DURATION))
+        val popExit = slideOutHorizontally(animationSpec = tween(NAV_ANIM_DURATION)) { it } + fadeOut(animationSpec = tween(NAV_ANIM_DURATION))
+    }
     NavHost(
         navController = navController,
         startDestination = startDestination
     ) {
-        composable(ROUTE_LOGIN) {
+        composable(
+            route = ROUTE_LOGIN,
+            enterTransition = { navTransitions.enter },
+            exitTransition = { navTransitions.exit },
+            popEnterTransition = { navTransitions.popEnter },
+            popExitTransition = { navTransitions.popExit }
+        ) {
             LoginScreen(
                 viewModel = loginViewModel,
                 onLoginSuccess = {
@@ -49,7 +68,13 @@ fun AjesChatNavGraph(
                 }
             )
         }
-        composable(ROUTE_CHAT_LIST) {
+        composable(
+            route = ROUTE_CHAT_LIST,
+            enterTransition = { navTransitions.enter },
+            exitTransition = { navTransitions.exit },
+            popEnterTransition = { navTransitions.popEnter },
+            popExitTransition = { navTransitions.popExit }
+        ) {
             ChatListScreen(
                 viewModel = chatListViewModel,
                 onUserClick = { user ->
@@ -68,7 +93,11 @@ fun AjesChatNavGraph(
                 navArgument("userId") { type = NavType.IntType },
                 navArgument("userName") { type = NavType.StringType },
                 navArgument("userRole") { type = NavType.StringType }
-            )
+            ),
+            enterTransition = { navTransitions.enter },
+            exitTransition = { navTransitions.exit },
+            popEnterTransition = { navTransitions.popEnter },
+            popExitTransition = { navTransitions.popExit }
         ) { backStackEntry ->
             val app = LocalContext.current.applicationContext as Application
             val userId = backStackEntry.arguments?.getInt("userId") ?: 0

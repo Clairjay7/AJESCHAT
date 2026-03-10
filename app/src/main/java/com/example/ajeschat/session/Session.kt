@@ -7,7 +7,8 @@ import androidx.compose.runtime.setValue
 data class Session(
     val id: Int,
     val name: String,
-    val role: String
+    val role: String,
+    val token: String = ""
 )
 
 object SessionHolder {

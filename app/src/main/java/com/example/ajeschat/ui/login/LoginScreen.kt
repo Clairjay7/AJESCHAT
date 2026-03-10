@@ -52,7 +52,7 @@ fun LoginScreen(
         Image(
             painter = painterResource(R.drawable.ajes_logo),
             contentDescription = "AJES logo",
-            modifier = Modifier.size(120.dp),
+            modifier = Modifier.size(200.dp),
             contentScale = ContentScale.Fit
         )
         Spacer(Modifier.height(16.dp))

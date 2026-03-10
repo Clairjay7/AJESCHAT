@@ -2,8 +2,8 @@ package com.example.ajeschat.data
 
 import android.content.Context
 import com.example.ajeschat.BuildConfig
-import com.example.ajeschat.network.CsrfFetcher
-import com.example.ajeschat.network.PersistentCookieJar
+import com.example.ajeschat.session.SessionStore
+import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -14,22 +14,33 @@ object ApiModule {
 
     val baseUrl: String get() = BuildConfig.BASE_URL
 
-    private var cookieJar: PersistentCookieJar? = null
+    private var appContext: Context? = null
     private var okHttp: OkHttpClient? = null
     private var _chatApi: ChatApi? = null
     private var _authApi: AuthApi? = null
 
     fun init(context: Context) {
-        if (cookieJar != null) return
-        cookieJar = PersistentCookieJar(context.applicationContext)
+        if (okHttp != null) return
+        appContext = context.applicationContext
+        val authInterceptor = Interceptor { chain ->
+            val token = SessionStore(appContext!!).load()?.token
+            val request = if (!token.isNullOrBlank()) {
+                chain.request().newBuilder()
+                    .addHeader("Authorization", "Bearer $token")
+                    .build()
+            } else {
+                chain.request()
+            }
+            chain.proceed(request)
+        }
         val logging = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
         okHttp = OkHttpClient.Builder()
-            .cookieJar(cookieJar!!)
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .writeTimeout(15, TimeUnit.SECONDS)
             .followRedirects(false)
             .followSslRedirects(false)
+            .addInterceptor(authInterceptor)
             .addInterceptor(logging)
             .build()
         val retrofit = Retrofit.Builder()
@@ -41,9 +52,7 @@ object ApiModule {
         _authApi = retrofit.create(AuthApi::class.java)
     }
 
-    fun getCookieJar(): PersistentCookieJar? = cookieJar
     fun getOkHttpClient(): OkHttpClient? = okHttp
-    fun getCsrfFetcher(): CsrfFetcher? = okHttp?.let { CsrfFetcher(it, baseUrl) }
     fun getChatApi(): ChatApi = _chatApi!!
     fun getAuthApi(): AuthApi = _authApi!!
 }
