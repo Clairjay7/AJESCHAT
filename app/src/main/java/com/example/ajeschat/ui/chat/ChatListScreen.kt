@@ -1,5 +1,6 @@
 package com.example.ajeschat.ui.chat
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,7 +26,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.example.ajeschat.R
 import com.example.ajeschat.data.ChatUser
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,7 +43,13 @@ fun ChatListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Chat") },
+                navigationIcon = {
+                    Image(
+                        painter = painterResource(R.drawable.ajes_logo),
+                        contentDescription = "AJES logo"
+                    )
+                },
+                title = { Text("Message") },
                 actions = {
                     IconButton(onClick = onLogout) {
                         Icon(
