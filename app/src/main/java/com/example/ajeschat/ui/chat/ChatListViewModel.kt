@@ -13,9 +13,25 @@ import kotlinx.coroutines.launch
 
 data class ChatListUiState(
     val users: List<ChatUser> = emptyList(),
+    val searchQuery: String = "",
     val loading: Boolean = false,
     val error: String? = null
-)
+) {
+    /** Matches name and/or role; multi-word queries require every word to appear somewhere (e.g. announcer + staff). */
+    val filteredUsers: List<ChatUser>
+        get() = users.filter { it.matchesSearch(searchQuery) }
+}
+
+private fun ChatUser.matchesSearch(raw: String): Boolean {
+    val q = raw.trim().lowercase()
+    if (q.isEmpty()) return true
+    val tokens = q.split(Regex("\\s+")).filter { it.isNotEmpty() }
+    val haystack = buildString {
+        append(name.lowercase())
+        role?.lowercase()?.let { append(' ').append(it) }
+    }
+    return tokens.all { haystack.contains(it) }
+}
 
 class ChatListViewModel(application: Application) : AndroidViewModel(application) {
     private val chatRepository: ChatRepository = (application as AjesChatApp).chatRepository
@@ -41,5 +57,9 @@ class ChatListViewModel(application: Application) : AndroidViewModel(application
                     )
                 }
         }
+    }
+
+    fun updateSearchQuery(query: String) {
+        _uiState.value = _uiState.value.copy(searchQuery = query)
     }
 }
