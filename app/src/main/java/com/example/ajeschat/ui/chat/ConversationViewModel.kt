@@ -116,4 +116,25 @@ class ConversationViewModel(
             }
         }
     }
+
+    /**
+     * Deletes the whole conversation on the server for this partner, then [onSuccess] runs (e.g. navigate back).
+     */
+    fun deleteConversation(onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            pollingJob?.cancel()
+            pollingJob = null
+            chatRepository.deleteConversation(partner.id)
+                .onSuccess {
+                    _uiState.value = ConversationUiState()
+                    onSuccess()
+                }
+                .onFailure {
+                    _uiState.value = _uiState.value.copy(
+                        error = it.message ?: "Failed to delete conversation"
+                    )
+                    startPolling()
+                }
+        }
+    }
 }

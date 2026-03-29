@@ -9,7 +9,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ajeschat.navigation.AjesChatNavGraph
-import com.example.ajeschat.navigation.ROUTE_CHAT_LIST
+import com.example.ajeschat.navigation.ROUTE_MAIN
 import com.example.ajeschat.navigation.ROUTE_LOGIN
 import com.example.ajeschat.session.SessionHolder
 import com.example.ajeschat.ui.login.LoginViewModel
@@ -23,7 +23,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             AJESCHATTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    val startDestination = if (SessionHolder.session != null) ROUTE_CHAT_LIST else ROUTE_LOGIN
+                    val startDestination = if (SessionHolder.session != null) ROUTE_MAIN else ROUTE_LOGIN
                     val loginViewModel: LoginViewModel = viewModel()
                     val chatListViewModel: ChatListViewModel = viewModel()
                     AjesChatNavGraph(

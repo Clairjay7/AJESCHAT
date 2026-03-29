@@ -32,4 +32,11 @@ interface ChatApi {
         @Field("scope") scope: String,
         @Field("with_id") withId: Int
     ): Response<okhttp3.ResponseBody>
+
+    /** Deletes all messages with this user (server must implement; see backend-addons). */
+    @FormUrlEncoded
+    @POST("chat/delete_conversation")
+    suspend fun deleteConversation(
+        @Field("with_id") withUserId: Int
+    ): Response<okhttp3.ResponseBody>
 }

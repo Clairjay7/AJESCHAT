@@ -16,8 +16,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.ajeschat.data.ChatUser
-import com.example.ajeschat.ui.chat.ChatListScreen
 import com.example.ajeschat.ui.chat.ChatListViewModel
+import com.example.ajeschat.ui.main.MainTabsScreen
 import com.example.ajeschat.ui.chat.ConversationScreen
 import com.example.ajeschat.ui.chat.ConversationViewModel
 import com.example.ajeschat.ui.login.LoginScreen
@@ -26,7 +26,10 @@ import com.example.ajeschat.ui.login.LoginViewModel
 private const val NAV_ANIM_DURATION = 300
 
 const val ROUTE_LOGIN = "login"
-const val ROUTE_CHAT_LIST = "chat_list"
+/** Main shell with bottom tabs (Chats, Stories, Notifications, Menu). */
+const val ROUTE_MAIN = "main"
+/** Same destination as [ROUTE_MAIN]; kept for older references. */
+const val ROUTE_CHAT_LIST = ROUTE_MAIN
 const val ROUTE_CONVERSATION = "conversation/{userId}/{userName}/{userRole}"
 
 fun conversationRoute(userId: Int, userName: String, userRole: String): String {
@@ -62,21 +65,21 @@ fun AjesChatNavGraph(
             LoginScreen(
                 viewModel = loginViewModel,
                 onLoginSuccess = {
-                    navController.navigate(ROUTE_CHAT_LIST) {
+                    navController.navigate(ROUTE_MAIN) {
                         popUpTo(ROUTE_LOGIN) { inclusive = true }
                     }
                 }
             )
         }
         composable(
-            route = ROUTE_CHAT_LIST,
+            route = ROUTE_MAIN,
             enterTransition = { navTransitions.enter },
             exitTransition = { navTransitions.exit },
             popEnterTransition = { navTransitions.popEnter },
             popExitTransition = { navTransitions.popExit }
         ) {
-            ChatListScreen(
-                viewModel = chatListViewModel,
+            MainTabsScreen(
+                chatListViewModel = chatListViewModel,
                 onUserClick = { user ->
                     navController.navigate(conversationRoute(user.id, user.name, user.role ?: ""))
                 },

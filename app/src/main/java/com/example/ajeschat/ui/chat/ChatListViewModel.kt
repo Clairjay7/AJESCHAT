@@ -17,7 +17,7 @@ data class ChatListUiState(
     val loading: Boolean = false,
     val error: String? = null
 ) {
-    /** Matches name and/or role; multi-word queries require every word to appear somewhere (e.g. announcer + staff). */
+    /** Matches display [ChatUser.name] only; multi-word queries require every word to appear in the name. */
     val filteredUsers: List<ChatUser>
         get() = users.filter { it.matchesSearch(searchQuery) }
 }
@@ -26,10 +26,7 @@ private fun ChatUser.matchesSearch(raw: String): Boolean {
     val q = raw.trim().lowercase()
     if (q.isEmpty()) return true
     val tokens = q.split(Regex("\\s+")).filter { it.isNotEmpty() }
-    val haystack = buildString {
-        append(name.lowercase())
-        role?.lowercase()?.let { append(' ').append(it) }
-    }
+    val haystack = name.lowercase()
     return tokens.all { haystack.contains(it) }
 }
 

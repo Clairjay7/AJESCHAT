@@ -43,4 +43,11 @@ class ChatRepository(
             if (!res.isSuccessful) throw HttpException(res)
         }
     }
+
+    suspend fun deleteConversation(withUserId: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val res = chatApi.deleteConversation(withUserId)
+            if (!res.isSuccessful) throw HttpException(res)
+        }
+    }
 }

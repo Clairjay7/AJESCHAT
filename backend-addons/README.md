@@ -15,7 +15,7 @@ Response format (JSON):
 {
   "users": [
     { "id": 1, "name": "Juan Dela Cruz", "role": "STUDENT", "has_chat": true },
-    { "id": 2, "name": "Maria Santos", "role": "TEACHER", "has_chat": false }
+    { "id": 2, "name": "Maria Santos", "role": "TEACHER", "has_chat": false, "last_message": "Hello", "last_message_at": "12:54 AM", "pinned": false, "active_status": "30m" }
   ]
 }
 ```
@@ -24,6 +24,7 @@ Response format (JSON):
 - `name` – display name
 - `role` – role string (e.g. STUDENT, TEACHER)
 - `has_chat` – optional; true if there is at least one message between current user and this user
+- Optional for chat rows: `last_message`, `last_message_at` (display string), `pinned`, `active_status` (e.g. `30m` for a green badge on the avatar)
 
 Use the same logic as your web `getChatUserList()` (e.g. all active users except current user; optionally set `has_chat` from existing conversations).
 
@@ -53,8 +54,9 @@ The app uses the same endpoints as the web:
 - `GET chat/messages?with={userId}` – same response (e.g. `{ "messages": [ { "id", "sender_id", "receiver_id", "content", "created_at", "is_mine", "unsent_for_all" } ] }`).
 - `POST chat/send` – body: `receiver_id`, `content`, and CSRF if required.
 - `POST chat/unsend` – body: `message_id`, `scope` (`me` or `all`), `with_id`, and CSRF if required.
+- **`POST chat/delete_conversation`** (app menu: Delete conversation) – body: `with_id` (other user’s id). Deletes all messages between the logged-in user and that user. **Add this route** in AJES if it does not exist yet; see `Chat_delete_conversation_example.php`.
 
-No changes needed if your web chat already uses these.
+No changes needed for send/messages/unsend if your web chat already uses those.
 
 ## 5. Base URL and cookies
 
