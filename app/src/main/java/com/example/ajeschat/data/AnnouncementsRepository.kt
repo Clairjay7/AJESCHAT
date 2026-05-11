@@ -1,0 +1,52 @@
+package com.example.ajeschat.data
+
+data class AnnouncementsPage(
+    val announcements: List<AnnouncementItem>,
+    val canManage: Boolean,
+    val role: String,
+    val audienceOptions: Map<String, String>,
+    val teacherSections: List<TeacherSectionOption>
+)
+
+class AnnouncementsRepository(
+    private val api: AnnouncementApi
+) {
+    suspend fun loadPage(): Result<AnnouncementsPage> {
+        return runCatching {
+            val response = api.getAnnouncements()
+            if (!response.isSuccessful) {
+                throw IllegalStateException("Failed to load announcements (${response.code()})")
+            }
+            val body = response.body()
+            AnnouncementsPage(
+                announcements = body?.announcements ?: emptyList(),
+                canManage = body?.canManage == true,
+                role = body?.role?.trim().orEmpty(),
+                audienceOptions = body?.audienceOptions ?: emptyMap(),
+                teacherSections = body?.teacherSections ?: emptyList()
+            )
+        }
+    }
+
+    suspend fun create(
+        title: String,
+        body: String,
+        sectionId: Int?,
+        audienceType: String?
+    ): Result<String> {
+        return runCatching {
+            val res = api.createAnnouncement(
+                AnnouncementCreateRequest(
+                    title = title.trim(),
+                    body = body.trim(),
+                    section_id = sectionId,
+                    audience_type = audienceType
+                )
+            )
+            if (!res.isSuccessful) {
+                throw IllegalStateException(res.body()?.message ?: "Failed to publish (${res.code()})")
+            }
+            res.body()?.message ?: "Announcement published."
+        }
+    }
+}

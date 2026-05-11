@@ -1,20 +1,15 @@
 package com.example.ajeschat.ui.main
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Chat
-import androidx.compose.material.icons.filled.AutoStories
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,19 +24,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.ajeschat.data.AnnouncementsRepository
+import com.example.ajeschat.data.ApiModule
 import com.example.ajeschat.data.ChatUser
+import com.example.ajeschat.data.ProfileRepository
 import com.example.ajeschat.ui.chat.ChatListScreen
 import com.example.ajeschat.ui.chat.ChatListViewModel
 
 private enum class MainTab {
-    Chats, Stories, Notifications, Menu
+    Chats, Announcements, Profile
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,6 +53,9 @@ fun MainTabsScreen(
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.Chats) }
     val chatState by chatListViewModel.uiState.collectAsState()
     val chatsBadgeCount = chatState.users.count { it.hasChat }
+    val appCtx = LocalContext.current.applicationContext
+    val announcementsRepository = remember { AnnouncementsRepository(ApiModule.getAnnouncementApi()) }
+    val profileRepository = remember(appCtx) { ProfileRepository(appCtx, ApiModule.getProfileApi()) }
 
     Scaffold(
         bottomBar = {
@@ -83,47 +85,23 @@ fun MainTabsScreen(
                     label = { Text("Chats") }
                 )
                 NavigationBarItem(
-                    selected = selectedTab == MainTab.Stories,
-                    onClick = { selectedTab = MainTab.Stories },
+                    selected = selectedTab == MainTab.Announcements,
+                    onClick = { selectedTab = MainTab.Announcements },
                     icon = {
                         Icon(
-                            Icons.Filled.AutoStories,
-                            contentDescription = "Stories"
+                            Icons.Filled.Campaign,
+                            contentDescription = "Announcements"
                         )
                     },
-                    label = { Text("Stories") }
+                    label = { Text("Announcements") }
                 )
                 NavigationBarItem(
-                    selected = selectedTab == MainTab.Notifications,
-                    onClick = { selectedTab = MainTab.Notifications },
+                    selected = selectedTab == MainTab.Profile,
+                    onClick = { selectedTab = MainTab.Profile },
                     icon = {
-                        Icon(
-                            Icons.Filled.Notifications,
-                            contentDescription = "Notifications"
-                        )
+                        Icon(Icons.Filled.Person, contentDescription = "Profile")
                     },
-                    label = { Text("Notifications") }
-                )
-                NavigationBarItem(
-                    selected = selectedTab == MainTab.Menu,
-                    onClick = { selectedTab = MainTab.Menu },
-                    icon = {
-                        Box {
-                            Icon(
-                                Icons.Filled.Menu,
-                                contentDescription = "Menu"
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .size(8.dp)
-                                    .offset(x = 4.dp, y = (-2).dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.error)
-                            )
-                        }
-                    },
-                    label = { Text("Menu") }
+                    label = { Text("Profile") }
                 )
             }
         }
@@ -140,15 +118,8 @@ fun MainTabsScreen(
                     onLogout = onLogout,
                     showLogoutInTopBar = false
                 )
-                MainTab.Stories -> PlaceholderTab(
-                    title = "Stories",
-                    subtitle = "No stories yet."
-                )
-                MainTab.Notifications -> PlaceholderTab(
-                    title = "Notifications",
-                    subtitle = "No new notifications."
-                )
-                MainTab.Menu -> MenuTab(onLogout = onLogout)
+                MainTab.Announcements -> AnnouncementsTab(repository = announcementsRepository)
+                MainTab.Profile -> ProfileTab(repository = profileRepository, onLogout = onLogout)
             }
         }
     }
@@ -174,27 +145,6 @@ private fun PlaceholderTab(title: String, subtitle: String) {
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 32.dp)
             )
-        }
-    }
-}
-
-@Composable
-private fun MenuTab(onLogout: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = "Menu",
-                style = MaterialTheme.typography.headlineSmall
-            )
-            Spacer(Modifier.height(24.dp))
-            TextButton(onClick = onLogout) {
-                Text("Log out")
-            }
         }
     }
 }

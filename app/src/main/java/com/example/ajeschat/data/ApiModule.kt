@@ -18,18 +18,21 @@ object ApiModule {
     private var okHttp: OkHttpClient? = null
     private var _chatApi: ChatApi? = null
     private var _authApi: AuthApi? = null
+    private var _announcementApi: AnnouncementApi? = null
+    private var _profileApi: ProfileApi? = null
 
     fun init(context: Context) {
         if (okHttp != null) return
         appContext = context.applicationContext
         val authInterceptor = Interceptor { chain ->
             val token = SessionStore(appContext!!).load()?.token
+            val b = chain.request().newBuilder()
+                // AJES AuthFilter returns 302 to login unless this looks like an API client (Bearer or Accept JSON).
+                .header("Accept", "application/json")
             val request = if (!token.isNullOrBlank()) {
-                chain.request().newBuilder()
-                    .addHeader("Authorization", "Bearer $token")
-                    .build()
+                b.addHeader("Authorization", "Bearer $token").build()
             } else {
-                chain.request()
+                b.build()
             }
             chain.proceed(request)
         }
@@ -38,8 +41,9 @@ object ApiModule {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .writeTimeout(15, TimeUnit.SECONDS)
-            .followRedirects(false)
-            .followSslRedirects(false)
+            // Follow 302/303 (e.g. canonical URL rewrites); avoids surfacing "HTTP 302 Found" when server redirects harmlessly.
+            .followRedirects(true)
+            .followSslRedirects(true)
             .addInterceptor(authInterceptor)
             .addInterceptor(logging)
             .build()
@@ -50,9 +54,13 @@ object ApiModule {
             .build()
         _chatApi = retrofit.create(ChatApi::class.java)
         _authApi = retrofit.create(AuthApi::class.java)
+        _announcementApi = retrofit.create(AnnouncementApi::class.java)
+        _profileApi = retrofit.create(ProfileApi::class.java)
     }
 
     fun getOkHttpClient(): OkHttpClient? = okHttp
     fun getChatApi(): ChatApi = _chatApi!!
     fun getAuthApi(): AuthApi = _authApi!!
+    fun getAnnouncementApi(): AnnouncementApi = _announcementApi!!
+    fun getProfileApi(): ProfileApi = _profileApi!!
 }

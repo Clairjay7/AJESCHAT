@@ -8,7 +8,8 @@ class SessionStore(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("ajeschat_session", Context.MODE_PRIVATE)
 
     fun save(s: Session) {
-        prefs.edit().putString(KEY_JSON, """{"id":${s.id},"name":"${escape(s.name)}","role":"${escape(s.role)}","token":"${escape(s.token)}"}""").apply()
+        // Use commit() so the token is visible before the next HTTP call (apply() is async and caused 302 redirects after login).
+        prefs.edit().putString(KEY_JSON, """{"id":${s.id},"name":"${escape(s.name)}","role":"${escape(s.role)}","token":"${escape(s.token)}"}""").commit()
     }
 
     fun load(): Session? {

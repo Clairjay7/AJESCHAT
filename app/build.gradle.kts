@@ -14,13 +14,12 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        // Physical phone: use your PC's IP (same Wi‑Fi as phone). Find it: ipconfig (Windows) → IPv4 Address
-        // Example: 192.168.1.100 — change to your PC's actual IP
-        buildConfigField("String", "BASE_URL", "\"http://192.168.1.6/AJES/\"")
+        // CodeIgniter is configured with index.php in URLs, so include it to avoid 302 redirects.
+        buildConfigField("String", "BASE_URL", "\"http://192.168.137.50/AJES/index.php/\"")
     }
     buildTypes {
         debug {
-            buildConfigField("String", "BASE_URL", "\"http://192.168.1.6/AJES/\"")
+            buildConfigField("String", "BASE_URL", "\"http://192.168.137.50/AJES/index.php/\"")
         }
         release {
             isMinifyEnabled = false
@@ -56,6 +55,7 @@ dependencies {
     implementation(libs.retrofit.converter.gson)
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
+    implementation("io.coil-kt:coil-compose:2.6.0")
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     testImplementation(libs.junit)
