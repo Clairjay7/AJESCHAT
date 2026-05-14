@@ -39,7 +39,7 @@ class AuthRepository(
                 if (resp?.status == "success" && resp.data != null) {
                     val d = resp.data
                     val session = Session(
-                        id = d.user_id,
+                        id = d.userId,
                         name = d.name ?: d.username ?: user,
                         role = d.role ?: "",
                         token = d.token ?: ""

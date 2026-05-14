@@ -15,11 +15,11 @@ android {
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // CodeIgniter is configured with index.php in URLs, so include it to avoid 302 redirects.
-        buildConfigField("String", "BASE_URL", "\"http://192.168.137.50/AJES/index.php/\"")
+        buildConfigField("String", "BASE_URL", "\"http://192.168.1.6/AJES/index.php/\"")
     }
     buildTypes {
         debug {
-            buildConfigField("String", "BASE_URL", "\"http://192.168.137.50/AJES/index.php/\"")
+            buildConfigField("String", "BASE_URL", "\"http://192.168.1.6/AJES/index.php/\"")
         }
         release {
             isMinifyEnabled = false

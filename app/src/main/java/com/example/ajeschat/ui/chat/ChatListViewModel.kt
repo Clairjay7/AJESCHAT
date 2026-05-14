@@ -36,10 +36,6 @@ class ChatListViewModel(application: Application) : AndroidViewModel(application
     private val _uiState = MutableStateFlow(ChatListUiState())
     val uiState: StateFlow<ChatListUiState> = _uiState.asStateFlow()
 
-    init {
-        loadUsers()
-    }
-
     fun loadUsers() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(loading = true, error = null)

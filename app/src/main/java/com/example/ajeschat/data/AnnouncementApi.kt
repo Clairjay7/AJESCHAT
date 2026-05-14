@@ -5,6 +5,7 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Path
 
 interface AnnouncementApi {
     @GET("api/announcements")
@@ -12,6 +13,15 @@ interface AnnouncementApi {
 
     @POST("api/announcements")
     suspend fun createAnnouncement(@Body body: AnnouncementCreateRequest): Response<AnnouncementCreateResponse>
+
+    @POST("api/announcements/update/{id}")
+    suspend fun updateAnnouncement(
+        @Path("id") id: Int,
+        @Body body: AnnouncementUpdateBody
+    ): Response<AnnouncementCreateResponse>
+
+    @POST("api/announcements/delete/{id}")
+    suspend fun deleteAnnouncement(@Path("id") id: Int): Response<AnnouncementCreateResponse>
 }
 
 data class AnnouncementsResponse(
@@ -46,4 +56,9 @@ data class AnnouncementCreateRequest(
 data class AnnouncementCreateResponse(
     val status: String? = null,
     val message: String? = null
+)
+
+data class AnnouncementUpdateBody(
+    val title: String,
+    val body: String
 )

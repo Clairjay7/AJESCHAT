@@ -49,4 +49,24 @@ class AnnouncementsRepository(
             res.body()?.message ?: "Announcement published."
         }
     }
+
+    suspend fun update(id: Int, title: String, body: String): Result<String> {
+        return runCatching {
+            val res = api.updateAnnouncement(id, AnnouncementUpdateBody(title.trim(), body.trim()))
+            if (!res.isSuccessful) {
+                throw IllegalStateException(res.body()?.message ?: "Update failed (${res.code()})")
+            }
+            res.body()?.message ?: "Updated."
+        }
+    }
+
+    suspend fun delete(id: Int): Result<String> {
+        return runCatching {
+            val res = api.deleteAnnouncement(id)
+            if (!res.isSuccessful) {
+                throw IllegalStateException(res.body()?.message ?: "Delete failed (${res.code()})")
+            }
+            res.body()?.message ?: "Deleted."
+        }
+    }
 }

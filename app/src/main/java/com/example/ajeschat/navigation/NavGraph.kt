@@ -10,18 +10,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
-import androidx.navigation.navArgument
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.ajeschat.data.ChatUser
 import com.example.ajeschat.ui.chat.ChatListViewModel
-import com.example.ajeschat.ui.main.MainTabsScreen
 import com.example.ajeschat.ui.chat.ConversationScreen
 import com.example.ajeschat.ui.chat.ConversationViewModel
 import com.example.ajeschat.ui.login.LoginScreen
 import com.example.ajeschat.ui.login.LoginViewModel
+import com.example.ajeschat.ui.main.MainTabsScreen
+import com.example.ajeschat.ui.tools.StaffToolScreen
+import com.example.ajeschat.ui.tools.StaffToolScreen
 
 private const val NAV_ANIM_DURATION = 300
 
@@ -31,6 +33,7 @@ const val ROUTE_MAIN = "main"
 /** Same destination as [ROUTE_MAIN]; kept for older references. */
 const val ROUTE_CHAT_LIST = ROUTE_MAIN
 const val ROUTE_CONVERSATION = "conversation/{userId}/{userName}/{userRole}"
+const val ROUTE_TOOLS = "tools/{toolId}"
 
 fun conversationRoute(userId: Int, userName: String, userRole: String): String {
     val encName = userName.replace(" ", "+")
@@ -79,6 +82,7 @@ fun AjesChatNavGraph(
             popExitTransition = { navTransitions.popExit }
         ) {
             MainTabsScreen(
+                navController = navController,
                 chatListViewModel = chatListViewModel,
                 onUserClick = { user ->
                     navController.navigate(conversationRoute(user.id, user.name, user.role ?: ""))
@@ -89,6 +93,17 @@ fun AjesChatNavGraph(
                     }
                 }
             )
+        }
+        composable(
+            route = ROUTE_TOOLS,
+            arguments = listOf(navArgument("toolId") { type = NavType.StringType }),
+            enterTransition = { navTransitions.enter },
+            exitTransition = { navTransitions.exit },
+            popEnterTransition = { navTransitions.popEnter },
+            popExitTransition = { navTransitions.popExit }
+        ) { entry ->
+            val toolId = entry.arguments?.getString("toolId") ?: ""
+            StaffToolScreen(toolId = toolId, onBack = { navController.popBackStack() })
         }
         composable(
             route = ROUTE_CONVERSATION,

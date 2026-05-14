@@ -27,7 +27,8 @@ data class ProfileData(
     val role: String? = null,
     val contact_number: String? = null,
     val bio: String? = null,
-    val profile_photo_url: String? = null
+    val profile_photo_url: String? = null,
+    val privileges: List<String>? = null
 )
 
 data class ProfileUpdateRequest(

@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -45,7 +47,9 @@ import com.example.ajeschat.data.AnnouncementItem
 import com.example.ajeschat.data.AnnouncementsPage
 import com.example.ajeschat.data.AnnouncementsRepository
 import com.example.ajeschat.data.TeacherSectionOption
+import com.example.ajeschat.session.SessionHolder
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 @Composable
 fun AnnouncementsTab(
@@ -76,8 +80,11 @@ fun AnnouncementsTab(
     }
 
     val p = page
-    val showFab = p != null && p.canManage &&
-        (p.role.uppercase() != "TEACHER" || p.teacherSections.isNotEmpty())
+    val effectiveRole = p?.role?.takeIf { it.isNotBlank() } ?: SessionHolder.session?.role
+    val roleUpper = effectiveRole?.trim()?.uppercase(Locale.US).orEmpty()
+    val isStudent = roleUpper == "STUDENT"
+    // Add for everyone except students (including teachers, even if section list is still loading/empty).
+    val showCreateFab = p != null && !isStudent
 
     Box(Modifier.fillMaxSize()) {
         when {
@@ -104,7 +111,43 @@ fun AnnouncementsTab(
                 }
             }
             p != null && p.announcements.isEmpty() -> {
-                BoxPlaceholder(title = "Announcements", subtitle = "No announcements yet.")
+                Column(Modifier.fillMaxSize()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = { load() }) { Text("Refresh") }
+                        if (showCreateFab) {
+                            TextButton(onClick = { showCreate = true }) {
+                                Icon(
+                                    Icons.Filled.Add,
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(end = 4.dp)
+                                )
+                                Text("Add", fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Announcements", style = MaterialTheme.typography.headlineSmall)
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "No announcements yet.",
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
             }
             p != null -> {
                 LazyColumn(
@@ -113,7 +156,23 @@ fun AnnouncementsTab(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     item {
-                        TextButton(onClick = { load() }) { Text("Refresh") }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(onClick = { load() }) { Text("Refresh") }
+                            if (showCreateFab) {
+                                TextButton(onClick = { showCreate = true }) {
+                                    Icon(
+                                        Icons.Filled.Add,
+                                        contentDescription = null,
+                                        modifier = Modifier.padding(end = 4.dp)
+                                    )
+                                    Text("Add", fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                        }
                     }
                     items(p.announcements) { ann ->
                         AnnouncementCard(ann, onClick = { selectedAnnouncement = ann })
@@ -122,15 +181,16 @@ fun AnnouncementsTab(
             }
         }
 
-        if (showFab && !loading && error == null) {
+        if (showCreateFab && !loading && error == null) {
             FloatingActionButton(
                 onClick = { showCreate = true },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
                     .padding(16.dp),
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(Icons.Filled.Add, contentDescription = "New announcement")
+                Icon(Icons.Filled.Add, contentDescription = "Add announcement")
             }
         }
     }
@@ -145,40 +205,125 @@ fun AnnouncementsTab(
     }
 
     selectedAnnouncement?.let { ann ->
-        AnnouncementDetailDialog(announcement = ann, onDismiss = { selectedAnnouncement = null })
+        AnnouncementDetailDialog(
+            announcement = ann,
+            canManage = p?.canManage == true,
+            repository = repository,
+            onDismiss = { selectedAnnouncement = null },
+            onChanged = { load() }
+        )
     }
 }
 
 @Composable
 private fun AnnouncementDetailDialog(
     announcement: AnnouncementItem,
-    onDismiss: () -> Unit
+    canManage: Boolean,
+    repository: AnnouncementsRepository,
+    onDismiss: () -> Unit,
+    onChanged: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(announcement.title, style = MaterialTheme.typography.titleLarge) },
-        text = {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
-                val meta = listOfNotNull(
-                    announcement.created_by_name?.takeIf { it.isNotBlank() },
-                    announcement.audience_type?.takeIf { it.isNotBlank() },
-                    announcement.created_at?.takeIf { it.isNotBlank() }
-                ).joinToString(" • ")
-                if (meta.isNotBlank()) {
-                    Text(
-                        meta,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(12.dp))
+    val scope = rememberCoroutineScope()
+    var editing by remember { mutableStateOf(false) }
+    var title by remember(announcement.id) { mutableStateOf(announcement.title) }
+    var body by remember(announcement.id) { mutableStateOf(announcement.body) }
+    var busy by remember { mutableStateOf(false) }
+    var localError by remember { mutableStateOf<String?>(null) }
+    var confirmDelete by remember { mutableStateOf(false) }
+
+    if (!confirmDelete) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = {
+                if (editing) {
+                    OutlinedTextField(value = title, onValueChange = { title = it }, singleLine = true, label = { Text("Title") })
+                } else {
+                    Text(announcement.title, style = MaterialTheme.typography.titleLarge)
                 }
-                Text(announcement.body, style = MaterialTheme.typography.bodyLarge)
+            },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    if (localError != null) {
+                        Text(localError!!, color = MaterialTheme.colorScheme.error)
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    val meta = listOfNotNull(
+                        announcement.created_by_name?.takeIf { it.isNotBlank() },
+                        announcement.audience_type?.takeIf { it.isNotBlank() },
+                        announcement.created_at?.takeIf { it.isNotBlank() }
+                    ).joinToString(" • ")
+                    if (meta.isNotBlank() && !editing) {
+                        Text(meta, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(12.dp))
+                    }
+                    if (editing) {
+                        OutlinedTextField(value = body, onValueChange = { body = it }, label = { Text("Body") }, minLines = 4)
+                    } else {
+                        Text(announcement.body, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            },
+            confirmButton = {
+                Row {
+                    if (canManage) {
+                        if (editing) {
+                            TextButton(
+                                onClick = {
+                                    scope.launch {
+                                        busy = true
+                                        localError = null
+                                        repository.update(announcement.id, title, body)
+                                            .onSuccess {
+                                                editing = false
+                                                onChanged()
+                                            }
+                                            .onFailure { localError = it.message }
+                                        busy = false
+                                    }
+                                },
+                                enabled = !busy
+                            ) { Text("Save") }
+                            TextButton(onClick = { editing = false; title = announcement.title; body = announcement.body }) {
+                                Text("Cancel edit")
+                            }
+                        } else {
+                            TextButton(onClick = { editing = true }) { Text("Edit") }
+                            TextButton(onClick = { confirmDelete = true }, enabled = !busy) {
+                                Text("Delete", color = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    }
+                    TextButton(onClick = onDismiss) { Text("Close") }
+                }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
-        }
-    )
+        )
+    }
+
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("Delete announcement?") },
+            text = { Text("This cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            busy = true
+                            repository.delete(announcement.id)
+                                .onSuccess {
+                                    confirmDelete = false
+                                    onDismiss()
+                                    onChanged()
+                                }
+                                .onFailure { localError = it.message }
+                            busy = false
+                        }
+                    }
+                ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } }
+        )
+    }
 }
 
 @Composable
@@ -236,8 +381,9 @@ private fun CreateAnnouncementDialog(
     var localError by remember { mutableStateOf<String?>(null) }
     var submitting by remember { mutableStateOf(false) }
 
-    val isTeacher = page.role.uppercase() == "TEACHER"
+    val isTeacher = page.role.trim().uppercase(Locale.US) == "TEACHER"
     val needsSection = isTeacher && page.teacherSections.isNotEmpty()
+    val teacherNoSections = isTeacher && page.teacherSections.isEmpty()
 
     AlertDialog(
         onDismissRequest = { if (!submitting) onDismiss() },
@@ -251,6 +397,14 @@ private fun CreateAnnouncementDialog(
                 if (localError != null) {
                     Text(localError!!, color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(8.dp))
+                }
+                if (teacherNoSections) {
+                    Text(
+                        "You are not assigned to any section yet. Ask your administrator to assign you to a class before posting an announcement.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(12.dp))
                 }
                 OutlinedTextField(
                     value = title,
@@ -326,12 +480,16 @@ private fun CreateAnnouncementDialog(
         },
         confirmButton = {
             Button(
-                enabled = !submitting,
+                enabled = !submitting && !teacherNoSections,
                 onClick = {
                     val t = title.trim()
                     val b = body.trim()
                     if (t.isEmpty() || b.isEmpty()) {
                         localError = "Title and message are required."
+                        return@Button
+                    }
+                    if (teacherNoSections) {
+                        localError = "You need at least one assigned section to publish."
                         return@Button
                     }
                     if (needsSection && selectedSectionId < 1) {
@@ -362,23 +520,4 @@ private fun CreateAnnouncementDialog(
             TextButton(onClick = onDismiss, enabled = !submitting) { Text("Cancel") }
         }
     )
-}
-
-@Composable
-private fun BoxPlaceholder(title: String, subtitle: String) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(title, style = MaterialTheme.typography.headlineSmall)
-        Spacer(Modifier.height(8.dp))
-        Text(
-            subtitle,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
 }

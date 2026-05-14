@@ -1,14 +1,13 @@
 package com.example.ajeschat.ui.main
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -19,47 +18,65 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
 import com.example.ajeschat.data.AnnouncementsRepository
 import com.example.ajeschat.data.ApiModule
 import com.example.ajeschat.data.ChatUser
+import com.example.ajeschat.data.MobileRepository
 import com.example.ajeschat.data.ProfileRepository
 import com.example.ajeschat.ui.chat.ChatListScreen
 import com.example.ajeschat.ui.chat.ChatListViewModel
 
 private enum class MainTab {
-    Chats, Announcements, Profile
+    Home, Chats, Announcements, Notifications, Profile
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainTabsScreen(
+    navController: NavHostController,
     chatListViewModel: ChatListViewModel,
     onUserClick: (ChatUser) -> Unit,
     onLogout: () -> Unit
 ) {
-    var selectedTab by rememberSaveable { mutableStateOf(MainTab.Chats) }
+    var selectedTab by remember { mutableStateOf(MainTab.Home) }
     val chatState by chatListViewModel.uiState.collectAsState()
     val chatsBadgeCount = chatState.users.count { it.hasChat }
     val appCtx = LocalContext.current.applicationContext
     val announcementsRepository = remember { AnnouncementsRepository(ApiModule.getAnnouncementApi()) }
     val profileRepository = remember(appCtx) { ProfileRepository(appCtx, ApiModule.getProfileApi()) }
+    val mobileRepo = remember { MobileRepository(ApiModule.getMobileApi()) }
+    var unreadBell by remember { mutableIntStateOf(0) }
+    var badgeNonce by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(selectedTab, badgeNonce) {
+        mobileRepo.summary().onSuccess { unreadBell = it.unreadNotifications }
+    }
+
+    val onBadgeRefresh: () -> Unit = { badgeNonce += 1 }
 
     Scaffold(
         bottomBar = {
             NavigationBar {
+                NavigationBarItem(
+                    selected = selectedTab == MainTab.Home,
+                    onClick = { selectedTab = MainTab.Home },
+                    icon = {
+                        Icon(Icons.Filled.Home, contentDescription = "Home")
+                    },
+                    label = { Text("Home") }
+                )
                 NavigationBarItem(
                     selected = selectedTab == MainTab.Chats,
                     onClick = { selectedTab = MainTab.Chats },
@@ -76,10 +93,7 @@ fun MainTabsScreen(
                                 }
                             }
                         ) {
-                            Icon(
-                                Icons.Filled.Chat,
-                                contentDescription = "Chats"
-                            )
+                            Icon(Icons.Filled.Chat, contentDescription = "Chats")
                         }
                     },
                     label = { Text("Chats") }
@@ -88,12 +102,30 @@ fun MainTabsScreen(
                     selected = selectedTab == MainTab.Announcements,
                     onClick = { selectedTab = MainTab.Announcements },
                     icon = {
-                        Icon(
-                            Icons.Filled.Campaign,
-                            contentDescription = "Announcements"
-                        )
+                        Icon(Icons.Filled.Campaign, contentDescription = "Announcements")
                     },
-                    label = { Text("Announcements") }
+                    label = { Text("News") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == MainTab.Notifications,
+                    onClick = { selectedTab = MainTab.Notifications },
+                    icon = {
+                        BadgedBox(
+                            badge = {
+                                if (unreadBell > 0) {
+                                    Badge {
+                                        Text(
+                                            unreadBell.coerceAtMost(99).toString(),
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Filled.Notifications, contentDescription = "Notifications")
+                        }
+                    },
+                    label = { Text("Alerts") }
                 )
                 NavigationBarItem(
                     selected = selectedTab == MainTab.Profile,
@@ -112,6 +144,13 @@ fun MainTabsScreen(
                 .padding(padding)
         ) {
             when (selectedTab) {
+                MainTab.Home -> HomeTab(
+                    navController = navController,
+                    onRefreshNotificationBadge = onBadgeRefresh,
+                    onOpenChats = { selectedTab = MainTab.Chats },
+                    onOpenNews = { selectedTab = MainTab.Announcements },
+                    onOpenAlerts = { selectedTab = MainTab.Notifications }
+                )
                 MainTab.Chats -> ChatListScreen(
                     viewModel = chatListViewModel,
                     onUserClick = onUserClick,
@@ -119,32 +158,9 @@ fun MainTabsScreen(
                     showLogoutInTopBar = false
                 )
                 MainTab.Announcements -> AnnouncementsTab(repository = announcementsRepository)
+                MainTab.Notifications -> NotificationsTab(onCountsChanged = onBadgeRefresh)
                 MainTab.Profile -> ProfileTab(repository = profileRepository, onLogout = onLogout)
             }
-        }
-    }
-}
-
-@Composable
-private fun PlaceholderTab(title: String, subtitle: String) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 32.dp)
-            )
         }
     }
 }

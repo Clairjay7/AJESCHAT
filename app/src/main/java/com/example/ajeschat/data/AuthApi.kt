@@ -1,5 +1,6 @@
 package com.example.ajeschat.data
 
+import com.google.gson.annotations.SerializedName
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.POST
@@ -24,17 +25,17 @@ data class LoginRequest(
 )
 
 data class LoginResponse(
-    val status: String?,
-    val data: LoginData?,
-    val message: String?
+    @SerializedName("status") val status: String?,
+    @SerializedName("data") val data: LoginData?,
+    @SerializedName("message") val message: String?
 )
 
 data class LoginData(
-    val user_id: Int,
-    val username: String?,
-    val name: String?,
-    val role: String?,
-    val token: String?
+    @SerializedName("user_id") val userId: Int,
+    @SerializedName("username") val username: String?,
+    @SerializedName("name") val name: String?,
+    @SerializedName("role") val role: String?,
+    @SerializedName("token") val token: String?
 )
 
 data class LogoutResponse(

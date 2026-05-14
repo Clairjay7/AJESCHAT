@@ -20,6 +20,9 @@ object ApiModule {
     private var _authApi: AuthApi? = null
     private var _announcementApi: AnnouncementApi? = null
     private var _profileApi: ProfileApi? = null
+    private var _notificationsApi: NotificationsApi? = null
+    private var _mobileApi: MobileApi? = null
+    private var _staffApi: StaffApi? = null
 
     fun init(context: Context) {
         if (okHttp != null) return
@@ -30,7 +33,10 @@ object ApiModule {
                 // AJES AuthFilter returns 302 to login unless this looks like an API client (Bearer or Accept JSON).
                 .header("Accept", "application/json")
             val request = if (!token.isNullOrBlank()) {
-                b.addHeader("Authorization", "Bearer $token").build()
+                // X-Bearer-Token: fallback when Apache strips Authorization (AJES reads it in ApiClientAuth).
+                b.addHeader("Authorization", "Bearer $token")
+                    .addHeader("X-Bearer-Token", token)
+                    .build()
             } else {
                 b.build()
             }
@@ -39,8 +45,8 @@ object ApiModule {
         val logging = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
         okHttp = OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
-            .writeTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(120, TimeUnit.SECONDS)
             // Follow 302/303 (e.g. canonical URL rewrites); avoids surfacing "HTTP 302 Found" when server redirects harmlessly.
             .followRedirects(true)
             .followSslRedirects(true)
@@ -56,6 +62,9 @@ object ApiModule {
         _authApi = retrofit.create(AuthApi::class.java)
         _announcementApi = retrofit.create(AnnouncementApi::class.java)
         _profileApi = retrofit.create(ProfileApi::class.java)
+        _notificationsApi = retrofit.create(NotificationsApi::class.java)
+        _mobileApi = retrofit.create(MobileApi::class.java)
+        _staffApi = retrofit.create(StaffApi::class.java)
     }
 
     fun getOkHttpClient(): OkHttpClient? = okHttp
@@ -63,4 +72,7 @@ object ApiModule {
     fun getAuthApi(): AuthApi = _authApi!!
     fun getAnnouncementApi(): AnnouncementApi = _announcementApi!!
     fun getProfileApi(): ProfileApi = _profileApi!!
+    fun getNotificationsApi(): NotificationsApi = _notificationsApi!!
+    fun getMobileApi(): MobileApi = _mobileApi!!
+    fun getStaffApi(): StaffApi = _staffApi!!
 }
