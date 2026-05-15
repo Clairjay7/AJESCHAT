@@ -1,6 +1,8 @@
 package com.example.ajeschat.ui.main
 
 import androidx.compose.foundation.layout.Arrangement
+import com.example.ajeschat.ui.theme.ajesScreenBackground
+import com.example.ajeschat.ui.theme.ajesTextButtonColors
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -62,18 +64,23 @@ fun HomeTab(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .ajesScreenBackground()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("Dashboard", style = MaterialTheme.typography.headlineSmall)
+        Text(
+            "Dashboard",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onBackground
+        )
         when {
             loading -> {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
             }
             error != null -> {
                 Text(error!!, color = MaterialTheme.colorScheme.error)
-                TextButton(onClick = { nonce++ }) { Text("Retry") }
+                TextButton(onClick = { nonce++ }, colors = ajesTextButtonColors()) { Text("Retry") }
             }
             summary != null -> {
                 val s = summary!!

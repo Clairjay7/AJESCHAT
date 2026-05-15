@@ -19,7 +19,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -43,13 +45,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.ajeschat.ui.theme.AjesGreen
+import com.example.ajeschat.ui.theme.AjesOnGreen
 import com.example.ajeschat.data.AnnouncementItem
 import com.example.ajeschat.data.AnnouncementsPage
 import com.example.ajeschat.data.AnnouncementsRepository
 import com.example.ajeschat.data.TeacherSectionOption
 import com.example.ajeschat.session.SessionHolder
+import com.example.ajeschat.ui.theme.AjesCardShape
+import com.example.ajeschat.ui.theme.ajesCardBorder
+import com.example.ajeschat.ui.theme.AjesTextPrimary
+import com.example.ajeschat.ui.theme.AjesTextSecondary
+import com.example.ajeschat.ui.theme.ajesScreenBackground
+import com.example.ajeschat.ui.theme.ajesTextButtonColors
+import com.example.ajeschat.ui.theme.ajesTextFieldColors
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -139,93 +152,74 @@ fun AnnouncementsTab(
         }
     }
 
-    Box(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().ajesScreenBackground()) {
+        AnnouncementsToolbar(
+            showAdd = showAdd,
+            dateFrom = dateFrom,
+            dateTo = dateTo,
+            onDateFromClick = { showFromPicker = true },
+            onDateToClick = { showToPicker = true },
+            onRefresh = { refreshKey++ },
+            onAdd = { showCreate = true },
+            onFilter = { refreshKey++ },
+            onResetFilter = {
+                dateFrom = ""
+                dateTo = ""
+                refreshKey++
+            }
+        )
+        HorizontalDivider(color = AjesTextSecondary.copy(alpha = 0.35f))
         when {
             loading -> {
                 Column(
-                    modifier = Modifier.fillMaxSize(),
+                    Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(color = AjesGreen)
                 }
             }
             error != null -> {
                 Column(
-                    modifier = Modifier
+                    Modifier
                         .fillMaxSize()
                         .padding(24.dp),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(error ?: "Error", color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(12.dp))
-                    TextButton(onClick = { refreshKey++ }) { Text("Retry") }
+                    TextButton(onClick = { refreshKey++ }, colors = ajesTextButtonColors()) {
+                        Text("Retry", color = AjesTextPrimary, fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
             p != null && p.announcements.isEmpty() -> {
-                Column(Modifier.fillMaxSize()) {
-                    AnnouncementsToolbar(
-                        showAdd = showAdd,
-                        dateFrom = dateFrom,
-                        dateTo = dateTo,
-                        onDateFromClick = { showFromPicker = true },
-                        onDateToClick = { showToPicker = true },
-                        onRefresh = { refreshKey++ },
-                        onAdd = { showCreate = true },
-                        onFilter = { refreshKey++ },
-                        onResetFilter = {
-                            dateFrom = ""
-                            dateTo = ""
-                            refreshKey++
-                        }
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        if (dateFrom.isNotBlank() || dateTo.isNotBlank()) {
+                            "No announcements in this date range."
+                        } else {
+                            "No announcements yet."
+                        },
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = AjesTextPrimary,
+                        textAlign = TextAlign.Center
                     )
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Announcements", style = MaterialTheme.typography.headlineSmall)
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                if (dateFrom.isNotBlank() || dateTo.isNotBlank()) {
-                                    "No announcements in this date range."
-                                } else {
-                                    "No announcements yet."
-                                },
-                                textAlign = TextAlign.Center,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
                 }
             }
             p != null -> {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 16.dp),
+                    contentPadding = PaddingValues(12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    item {
-                        AnnouncementsToolbar(
-                            showAdd = showAdd,
-                            dateFrom = dateFrom,
-                            dateTo = dateTo,
-                            onDateFromClick = { showFromPicker = true },
-                            onDateToClick = { showToPicker = true },
-                            onRefresh = { refreshKey++ },
-                            onAdd = { showCreate = true },
-                            onFilter = { refreshKey++ },
-                            onResetFilter = {
-                                dateFrom = ""
-                                dateTo = ""
-                                refreshKey++
-                            }
-                        )
-                    }
-                    items(p.announcements) { ann ->
+                    items(p.announcements, key = { it.id }) { ann ->
                         AnnouncementCard(ann, onClick = { selectedAnnouncement = ann })
                     }
                 }
@@ -265,19 +259,25 @@ private fun AnnouncementsToolbar(
     onFilter: () -> Unit,
     onResetFilter: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 8.dp)
-    ) {
+    Column(Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = onRefresh) { Text("Refresh") }
+            TextButton(onClick = onRefresh, colors = ajesTextButtonColors()) {
+                Text("Refresh", color = AjesTextPrimary, fontWeight = FontWeight.SemiBold)
+            }
             if (showAdd) {
-                TextButton(onClick = onAdd) {
+                Button(
+                    onClick = onAdd,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AjesGreen,
+                        contentColor = AjesOnGreen
+                    )
+                ) {
                     Icon(
                         Icons.Filled.Add,
                         contentDescription = null,
@@ -287,35 +287,61 @@ private fun AnnouncementsToolbar(
                 }
             }
         }
-        HorizontalDivider(Modifier.padding(vertical = 6.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            DateFilterField(
-                label = "From",
-                value = dateFrom,
-                onClick = onDateFromClick,
-                modifier = Modifier.weight(1f)
-            )
-            DateFilterField(
-                label = "To",
-                value = dateTo,
-                onClick = onDateToClick,
-                modifier = Modifier.weight(1f)
-            )
-        }
-        Row(
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 12.dp)
+                .padding(bottom = 8.dp)
+                .ajesCardBorder(),
+            shape = AjesCardShape,
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White,
+                contentColor = AjesTextPrimary
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
-            TextButton(onClick = onFilter) { Text("Filter") }
-            if (dateFrom.isNotBlank() || dateTo.isNotBlank()) {
-                TextButton(onClick = onResetFilter) { Text("Reset") }
+            Column(Modifier.padding(12.dp)) {
+                Text(
+                    "Filter by date",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = AjesTextPrimary
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    DateFilterField(
+                        label = "From",
+                        value = dateFrom,
+                        onClick = onDateFromClick,
+                        modifier = Modifier.weight(1f)
+                    )
+                    DateFilterField(
+                        label = "To",
+                        value = dateTo,
+                        onClick = onDateToClick,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = onFilter, colors = ajesTextButtonColors()) {
+                        Text("Filter", color = AjesTextPrimary, fontWeight = FontWeight.SemiBold)
+                    }
+                    if (dateFrom.isNotBlank() || dateTo.isNotBlank()) {
+                        TextButton(onClick = onResetFilter, colors = ajesTextButtonColors()) {
+                            Text("Reset", color = AjesTextPrimary, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
             }
         }
     }
@@ -333,10 +359,11 @@ private fun DateFilterField(
             value = value,
             onValueChange = {},
             readOnly = true,
-            label = { Text(label) },
-            placeholder = { Text("yyyy-MM-dd") },
+            label = { Text(label, color = AjesTextPrimary) },
+            placeholder = { Text("yyyy-MM-dd", color = AjesTextSecondary) },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            singleLine = true,
+            colors = ajesTextFieldColors()
         )
         Box(
             Modifier
@@ -466,33 +493,47 @@ private fun AnnouncementDetailDialog(
 
 @Composable
 private fun AnnouncementCard(ann: AnnouncementItem, onClick: () -> Unit) {
+    val meta = listOfNotNull(
+        ann.created_by_name?.takeIf { it.isNotBlank() },
+        ann.audience_type?.takeIf { it.isNotBlank() },
+        ann.created_at?.takeIf { it.isNotBlank() }
+    ).joinToString(" • ")
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .ajesCardBorder()
+            .clickable(onClick = onClick),
+        shape = AjesCardShape,
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White,
+            contentColor = AjesTextPrimary
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(Modifier.padding(14.dp)) {
             Text(
-                text = ann.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
+                text = ann.title.ifBlank { "Announcement" },
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                color = AjesTextPrimary
             )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = ann.body,
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(Modifier.height(8.dp))
-            val meta = listOfNotNull(
-                ann.created_by_name?.takeIf { it.isNotBlank() },
-                ann.audience_type?.takeIf { it.isNotBlank() },
-                ann.created_at?.takeIf { it.isNotBlank() }
-            ).joinToString(" • ")
+            if (ann.body.isNotBlank()) {
+                Text(
+                    text = ann.body,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AjesTextPrimary,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+            }
             if (meta.isNotBlank()) {
                 Text(
                     text = meta,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.bodySmall,
+                    color = AjesTextSecondary,
+                    modifier = Modifier.padding(top = 6.dp)
                 )
             }
         }
@@ -546,7 +587,8 @@ private fun CreateAnnouncementDialog(
                     onValueChange = { title = it; localError = null },
                     label = { Text("Title") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ajesTextFieldColors()
                 )
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
@@ -554,12 +596,17 @@ private fun CreateAnnouncementDialog(
                     onValueChange = { body = it; localError = null },
                     label = { Text("Message") },
                     minLines = 4,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ajesTextFieldColors()
                 )
 
                 if (audienceKeys.isNotEmpty()) {
                     Spacer(Modifier.height(12.dp))
-                    Text("Audience", style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        "Audience",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = AjesTextPrimary
+                    )
                     Spacer(Modifier.height(4.dp))
                     audienceKeys.forEach { key ->
                         val label = audienceOptions[key] ?: key
@@ -580,7 +627,7 @@ private fun CreateAnnouncementDialog(
                                 },
                                 enabled = !submitting
                             )
-                            Text(label, style = MaterialTheme.typography.bodyMedium)
+                            Text(label, style = MaterialTheme.typography.bodyMedium, color = AjesTextPrimary)
                         }
                     }
                 }

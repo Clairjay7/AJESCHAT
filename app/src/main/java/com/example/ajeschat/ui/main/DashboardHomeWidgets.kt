@@ -2,6 +2,7 @@ package com.example.ajeschat.ui.main
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,6 +36,16 @@ import com.example.ajeschat.data.MobileDashboardBundle
 import com.example.ajeschat.data.MobileDashboardKpi
 import com.example.ajeschat.data.MobileDashboardMsgRow
 import com.example.ajeschat.data.MobileDashboardSectionRow
+import com.example.ajeschat.ui.theme.AjesCardShape
+import com.example.ajeschat.ui.theme.AjesCardShapeMedium
+import com.example.ajeschat.ui.theme.AjesTextPrimary
+import com.example.ajeschat.ui.theme.AjesTextSecondary
+import com.example.ajeschat.ui.theme.ajesCardColors
+import com.example.ajeschat.ui.theme.ajesCardElevation
+import com.example.ajeschat.ui.theme.ajesGreenGradient
+import com.example.ajeschat.ui.theme.ajesMintGradient
+import com.example.ajeschat.ui.theme.ajesSageGradient
+import com.example.ajeschat.ui.theme.ajesCardBorder
 
 internal data class DashboardHighlight(
     val emoji: String,
@@ -85,23 +96,29 @@ internal fun dashboardHighlights(variant: String?): List<DashboardHighlight> {
 @Composable
 internal fun DashboardWelcomeCard(name: String, welcomeLine: String?) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
-        ),
-        shape = RoundedCornerShape(16.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .ajesCardBorder(),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        elevation = ajesCardElevation(),
+        shape = AjesCardShape
     ) {
-        Column(Modifier.padding(16.dp)) {
+        Column(
+            Modifier
+                .background(ajesMintGradient())
+                .padding(16.dp)
+        ) {
             Text(
                 "Welcome back, $name!",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                color = AjesTextPrimary
             )
             Spacer(Modifier.height(6.dp))
             Text(
                 welcomeLine ?: "",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+                color = AjesTextSecondary
             )
         }
     }
@@ -111,25 +128,35 @@ internal fun DashboardWelcomeCard(name: String, welcomeLine: String?) {
 internal fun DashboardKpiStack(kpis: List<MobileDashboardKpi>) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         kpis.take(3).forEachIndexed { index, k ->
-            val tint = when (index % 3) {
-                0 -> MaterialTheme.colorScheme.primaryContainer
-                1 -> MaterialTheme.colorScheme.secondaryContainer
-                else -> MaterialTheme.colorScheme.tertiaryContainer
+            val gradient = when (index % 3) {
+                0 -> ajesMintGradient()
+                1 -> ajesSageGradient()
+                else -> ajesGreenGradient()
             }
             Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = tint.copy(alpha = 0.55f)),
-                shape = RoundedCornerShape(14.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .ajesCardBorder(),
+                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                elevation = ajesCardElevation(),
+                shape = AjesCardShapeMedium
             ) {
-                Column(Modifier.padding(14.dp)) {
-                    Text(k.title ?: "", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(k.value ?: "—", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    Text(k.meta ?: "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Column(Modifier.background(gradient).padding(14.dp)) {
+                    Text(k.title ?: "", style = MaterialTheme.typography.labelLarge, color = AjesTextSecondary)
+                    Text(
+                        k.value ?: "—",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = AjesTextPrimary
+                    )
+                    Text(k.meta ?: "", style = MaterialTheme.typography.bodySmall, color = AjesTextSecondary)
                     val pct = (k.progressPct ?: 0).coerceIn(0, 100) / 100f
                     Spacer(Modifier.height(8.dp))
                     LinearProgressIndicator(
                         progress = { pct },
                         modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
                     )
                 }
             }
@@ -140,19 +167,32 @@ internal fun DashboardKpiStack(kpis: List<MobileDashboardKpi>) {
 @Composable
 internal fun DashboardQuickHighlightsCard(highlights: List<DashboardHighlight>) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-        shape = RoundedCornerShape(14.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .ajesCardBorder(),
+        colors = ajesCardColors(),
+        elevation = ajesCardElevation(),
+        shape = AjesCardShapeMedium
     ) {
         Column(Modifier.padding(14.dp)) {
-            Text("Quick highlights", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(
+                "Quick highlights",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = AjesTextPrimary
+            )
             Spacer(Modifier.height(10.dp))
             highlights.forEach { h ->
                 Row(Modifier.padding(vertical = 6.dp), verticalAlignment = Alignment.Top) {
                     Text(h.emoji, modifier = Modifier.padding(end = 10.dp))
                     Column {
-                        Text(h.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                        Text(h.subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            h.title,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = AjesTextPrimary
+                        )
+                        Text(h.subtitle, style = MaterialTheme.typography.bodySmall, color = AjesTextSecondary)
                     }
                 }
             }

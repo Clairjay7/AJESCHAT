@@ -67,7 +67,11 @@ import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import java.io.File
 import com.example.ajeschat.data.ChatMessage
-import com.example.ajeschat.ui.theme.AjesGreen
+import com.example.ajeschat.ui.theme.AjesChatBubbleMine
+import com.example.ajeschat.ui.theme.AjesTextPrimary
+import com.example.ajeschat.ui.theme.AjesTextSecondary
+import com.example.ajeschat.ui.theme.ajesScreenBackground
+import com.example.ajeschat.ui.theme.ajesTopAppBarColors
 
 private const val UNSENT_PLACEHOLDER = "The message was unsent for everyone."
 
@@ -146,8 +150,10 @@ fun ConversationScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
+                colors = ajesTopAppBarColors(),
                 title = {
                     Column {
                         Text(partner.name)
@@ -161,7 +167,9 @@ fun ConversationScreen(
                     }
                 },
                 navigationIcon = {
-                    TextButton(onClick = onBack) { Text("Back") }
+                    TextButton(onClick = onBack) {
+                        Text("Back", color = MaterialTheme.colorScheme.onPrimary)
+                    }
                 },
                 actions = {
                     Box {
@@ -318,6 +326,7 @@ fun ConversationScreen(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
+                .ajesScreenBackground()
                 .padding(padding),
             reverseLayout = false,
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -424,7 +433,7 @@ private fun MessageBubble(
                     bottomEnd = if (isMine) 4.dp else 12.dp
                 ),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (isMine) AjesGreen else MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = if (isMine) AjesChatBubbleMine else MaterialTheme.colorScheme.surfaceVariant
                 ),
                 modifier = Modifier
                     .widthIn(max = 320.dp)
@@ -455,13 +464,13 @@ private fun MessageBubble(
                         Text(
                             text = displayText,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = if (isMine) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (isMine) AjesTextPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Text(
                         text = message.createdAt,
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (isMine) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                        color = if (isMine) AjesTextSecondary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                     )
                 }
             }

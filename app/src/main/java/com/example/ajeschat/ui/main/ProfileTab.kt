@@ -48,6 +48,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.ajeschat.data.ProfileData
+import com.example.ajeschat.ui.theme.AjesTextPrimary
+import com.example.ajeschat.ui.theme.AjesTextSecondary
+import com.example.ajeschat.ui.theme.ajesScreenBackground
+import com.example.ajeschat.ui.theme.ajesTextButtonColors
+import com.example.ajeschat.ui.theme.ajesTextFieldColors
 import com.example.ajeschat.data.ProfileRepository
 import com.example.ajeschat.session.SessionHolder
 import com.example.ajeschat.session.SessionStore
@@ -111,7 +116,7 @@ fun ProfileTab(
 
     if (loading) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().ajesScreenBackground(),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -123,20 +128,25 @@ fun ProfileTab(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .ajesScreenBackground()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Text("Profile Settings", style = MaterialTheme.typography.headlineSmall)
+        Text(
+            "Profile Settings",
+            style = MaterialTheme.typography.headlineSmall,
+            color = AjesTextPrimary
+        )
         Text(
             "Everyone signed in can update their own profile and password here.",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = AjesTextSecondary
         )
         Text(
             "Role: ${profile?.role ?: "-"}",
             style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = AjesTextSecondary
         )
 
         OutlinedTextField(
@@ -144,8 +154,9 @@ fun ProfileTab(
             onValueChange = { },
             readOnly = true,
             enabled = true,
-            label = { Text("Username") },
-            modifier = Modifier.fillMaxWidth()
+            label = { Text("Username", color = AjesTextPrimary) },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ajesTextFieldColors()
         )
 
         Row(
@@ -178,84 +189,91 @@ fun ProfileTab(
                     Text(
                         text = "—",
                         style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = AjesTextSecondary
                     )
                 }
             }
             Column {
-                TextButton(onClick = { pickImage.launch("image/*") }) {
-                    Text(if (pendingPhotoUri != null) "Change photo" else "Choose photo")
+                TextButton(onClick = { pickImage.launch("image/*") }, colors = ajesTextButtonColors()) {
+                    Text(if (pendingPhotoUri != null) "Change photo" else "Choose photo", color = AjesTextPrimary)
                 }
                 TextButton(
                     onClick = {
                         markRemovePhoto = true
                         pendingPhotoUri = null
                     },
-                    enabled = profile?.profile_photo_url != null || pendingPhotoUri != null
+                    enabled = profile?.profile_photo_url != null || pendingPhotoUri != null,
+                    colors = ajesTextButtonColors()
                 ) {
-                    Text("Remove photo")
+                    Text("Remove photo", color = AjesTextPrimary)
                 }
             }
         }
         Text(
             "JPG, PNG, or WEBP (max 2MB). Save to apply.",
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = AjesTextSecondary
         )
 
         HorizontalDivider()
-        Text("Personal information", style = MaterialTheme.typography.titleMedium)
+        Text("Personal information", style = MaterialTheme.typography.titleMedium, color = AjesTextPrimary)
 
         OutlinedTextField(
             value = name,
             onValueChange = { name = it; error = null },
-            label = { Text("Full name") },
-            modifier = Modifier.fillMaxWidth()
+            label = { Text("Full name", color = AjesTextPrimary) },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ajesTextFieldColors()
         )
         OutlinedTextField(
             value = email,
             onValueChange = { email = it; error = null },
-            label = { Text("Email") },
-            modifier = Modifier.fillMaxWidth()
+            label = { Text("Email", color = AjesTextPrimary) },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ajesTextFieldColors()
         )
         OutlinedTextField(
             value = contact,
             onValueChange = { contact = it; error = null },
-            label = { Text("Contact number") },
-            modifier = Modifier.fillMaxWidth()
+            label = { Text("Contact number", color = AjesTextPrimary) },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ajesTextFieldColors()
         )
         OutlinedTextField(
             value = bio,
             onValueChange = { bio = it; error = null },
-            label = { Text("Bio / About") },
+            label = { Text("Bio / About", color = AjesTextPrimary) },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(120.dp)
+                .height(120.dp),
+            colors = ajesTextFieldColors()
         )
 
         Spacer(Modifier.height(4.dp))
         HorizontalDivider()
         Spacer(Modifier.height(4.dp))
-        Text("Security", style = MaterialTheme.typography.titleMedium)
+        Text("Security", style = MaterialTheme.typography.titleMedium, color = AjesTextPrimary)
         Text(
             "Leave new password empty to keep your current password.",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = AjesTextSecondary
         )
 
         OutlinedTextField(
             value = oldPassword,
             onValueChange = { oldPassword = it; error = null },
-            label = { Text("Current password") },
+            label = { Text("Current password", color = AjesTextPrimary) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
+            colors = ajesTextFieldColors(),
             visualTransformation = if (oldVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             trailingIcon = {
                 IconButton(onClick = { oldVisible = !oldVisible }) {
                     Icon(
                         if (oldVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                        contentDescription = if (oldVisible) "Hide password" else "Show password"
+                        contentDescription = if (oldVisible) "Hide password" else "Show password",
+                        tint = AjesTextPrimary
                     )
                 }
             }
@@ -263,16 +281,18 @@ fun ProfileTab(
         OutlinedTextField(
             value = newPassword,
             onValueChange = { newPassword = it; error = null },
-            label = { Text("New password") },
+            label = { Text("New password", color = AjesTextPrimary) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
+            colors = ajesTextFieldColors(),
             visualTransformation = if (newVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             trailingIcon = {
                 IconButton(onClick = { newVisible = !newVisible }) {
                     Icon(
                         if (newVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                        contentDescription = if (newVisible) "Hide password" else "Show password"
+                        contentDescription = if (newVisible) "Hide password" else "Show password",
+                        tint = AjesTextPrimary
                     )
                 }
             }
@@ -280,16 +300,18 @@ fun ProfileTab(
         OutlinedTextField(
             value = confirmPassword,
             onValueChange = { confirmPassword = it; error = null },
-            label = { Text("Confirm new password") },
+            label = { Text("Confirm new password", color = AjesTextPrimary) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
+            colors = ajesTextFieldColors(),
             visualTransformation = if (confirmVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             trailingIcon = {
                 IconButton(onClick = { confirmVisible = !confirmVisible }) {
                     Icon(
                         if (confirmVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                        contentDescription = if (confirmVisible) "Hide password" else "Show password"
+                        contentDescription = if (confirmVisible) "Hide password" else "Show password",
+                        tint = AjesTextPrimary
                     )
                 }
             }
@@ -299,7 +321,7 @@ fun ProfileTab(
             Text(error ?: "", color = MaterialTheme.colorScheme.error)
         }
         if (info != null) {
-            Text(info ?: "", color = MaterialTheme.colorScheme.primary)
+            Text(info ?: "", color = AjesTextPrimary)
         }
 
         Button(
@@ -353,10 +375,16 @@ fun ProfileTab(
             Text(if (saving) "Saving..." else "Save")
         }
 
-        TextButton(onClick = { requestLoad() }) { Text("Reload") }
+        TextButton(onClick = { requestLoad() }, colors = ajesTextButtonColors()) {
+            Text("Reload", color = AjesTextPrimary)
+        }
         Spacer(Modifier.height(24.dp))
-        TextButton(onClick = onLogout, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-            Text("Log out")
+        TextButton(
+            onClick = onLogout,
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+            colors = ajesTextButtonColors()
+        ) {
+            Text("Log out", color = AjesTextPrimary)
         }
     }
 }

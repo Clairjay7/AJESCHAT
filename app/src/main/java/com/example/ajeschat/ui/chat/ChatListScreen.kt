@@ -51,6 +51,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import com.example.ajeschat.R
 import com.example.ajeschat.data.ChatUser
+import com.example.ajeschat.ui.theme.AjesStatusOnline
+import com.example.ajeschat.ui.theme.AjesTextPrimary
+import com.example.ajeschat.ui.theme.AjesTextSecondary
+import com.example.ajeschat.ui.theme.ajesScreenBackground
+import com.example.ajeschat.ui.theme.ajesTopAppBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,31 +72,35 @@ fun ChatListScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    Image(
-                        painter = painterResource(R.drawable.ajes_logo),
-                        contentDescription = "AJES logo"
-                    )
-                },
-                title = { Text("Message") },
-                actions = {
-                    if (showLogoutInTopBar) {
+            if (showLogoutInTopBar) {
+                TopAppBar(
+                    colors = ajesTopAppBarColors(),
+                    navigationIcon = {
+                        Image(
+                            painter = painterResource(R.drawable.ajes_logo),
+                            contentDescription = "AJES logo"
+                        )
+                    },
+                    title = { Text("Messages") },
+                    actions = {
                         IconButton(onClick = onLogout) {
                             Icon(
                                 Icons.AutoMirrored.Filled.Logout,
-                                contentDescription = "Log out"
+                                contentDescription = "Log out",
+                                tint = MaterialTheme.colorScheme.onPrimary
                             )
                         }
                     }
-                }
-            )
+                )
+            }
         }
     ) { padding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .ajesScreenBackground()
                 .padding(padding)
         ) {
             when {
@@ -268,7 +277,7 @@ private fun ChatListUserRow(
                             .align(Alignment.BottomEnd)
                             .offset(x = 4.dp, y = 4.dp)
                             .clip(RoundedCornerShape(50))
-                            .background(Color(0xFF1EAD5C))
+                            .background(AjesStatusOnline)
                             .padding(horizontal = 5.dp, vertical = 2.dp)
                     )
                 }
@@ -286,6 +295,7 @@ private fun ChatListUserRow(
                         text = user.name,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
+                        color = AjesTextPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
@@ -310,7 +320,7 @@ private fun ChatListUserRow(
                     Text(
                         text = preview,
                         style = MaterialTheme.typography.bodySmall,
-                        color = scheme.onSurfaceVariant,
+                        color = AjesTextSecondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
@@ -319,7 +329,7 @@ private fun ChatListUserRow(
                         Text(
                             text = " · $timeLabel",
                             style = MaterialTheme.typography.bodySmall,
-                            color = scheme.onSurfaceVariant,
+                            color = AjesTextSecondary,
                             maxLines = 1
                         )
                     }

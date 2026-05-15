@@ -1,8 +1,16 @@
 package com.example.ajeschat.ui.main
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Chat
@@ -11,11 +19,12 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,10 +35,15 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.example.ajeschat.R
 import com.example.ajeschat.data.AnnouncementsRepository
 import com.example.ajeschat.data.ApiModule
 import com.example.ajeschat.data.ChatUser
@@ -37,6 +51,10 @@ import com.example.ajeschat.data.MobileRepository
 import com.example.ajeschat.data.ProfileRepository
 import com.example.ajeschat.ui.chat.ChatListScreen
 import com.example.ajeschat.ui.chat.ChatListViewModel
+import com.example.ajeschat.ui.theme.AjesBorder
+import com.example.ajeschat.ui.theme.ajesLogoTopAppBarColors
+import com.example.ajeschat.ui.theme.ajesNavigationRailItemColors
+import com.example.ajeschat.ui.theme.ajesScreenBackground
 
 private enum class MainTab {
     Home, Chats, Announcements, Notifications, Profile
@@ -65,26 +83,59 @@ fun MainTabsScreen(
     }
 
     val onBadgeRefresh: () -> Unit = { badgeNonce += 1 }
+    val railColors = ajesNavigationRailItemColors()
 
     Scaffold(
-        bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Image(
+                        painter = painterResource(R.drawable.ajes_logo),
+                        contentDescription = "AJES logo",
+                        modifier = Modifier
+                            .heightIn(min = 48.dp, max = 64.dp)
+                            .widthIn(max = 240.dp)
+                            .height(64.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                },
+                colors = ajesLogoTopAppBarColors()
+            )
+        }
+    ) { padding ->
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            NavigationRail(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .border(width = 1.dp, color = AjesBorder),
+                containerColor = Color.White,
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ) {
+                NavigationRailItem(
                     selected = selectedTab == MainTab.Home,
                     onClick = { selectedTab = MainTab.Home },
-                    icon = {
-                        Icon(Icons.Filled.Home, contentDescription = "Home")
-                    },
+                    colors = railColors,
+                    icon = { Icon(Icons.Filled.Home, contentDescription = "Home") },
                     label = { Text("Home") }
                 )
-                NavigationBarItem(
+                NavigationRailItem(
                     selected = selectedTab == MainTab.Chats,
                     onClick = { selectedTab = MainTab.Chats },
+                    colors = railColors,
                     icon = {
                         BadgedBox(
                             badge = {
                                 if (chatsBadgeCount > 0) {
-                                    Badge {
+                                    Badge(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .offset(x = 4.dp, y = (-2).dp)
+                                    ) {
                                         Text(
                                             chatsBadgeCount.coerceAtMost(99).toString(),
                                             style = MaterialTheme.typography.labelSmall
@@ -98,22 +149,26 @@ fun MainTabsScreen(
                     },
                     label = { Text("Chats") }
                 )
-                NavigationBarItem(
+                NavigationRailItem(
                     selected = selectedTab == MainTab.Announcements,
                     onClick = { selectedTab = MainTab.Announcements },
-                    icon = {
-                        Icon(Icons.Filled.Campaign, contentDescription = "Announcements")
-                    },
+                    colors = railColors,
+                    icon = { Icon(Icons.Filled.Campaign, contentDescription = "Announcements") },
                     label = { Text("News") }
                 )
-                NavigationBarItem(
+                NavigationRailItem(
                     selected = selectedTab == MainTab.Notifications,
                     onClick = { selectedTab = MainTab.Notifications },
+                    colors = railColors,
                     icon = {
                         BadgedBox(
                             badge = {
                                 if (unreadBell > 0) {
-                                    Badge {
+                                    Badge(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .offset(x = 4.dp, y = (-2).dp)
+                                    ) {
                                         Text(
                                             unreadBell.coerceAtMost(99).toString(),
                                             style = MaterialTheme.typography.labelSmall
@@ -127,39 +182,38 @@ fun MainTabsScreen(
                     },
                     label = { Text("Alerts") }
                 )
-                NavigationBarItem(
+                NavigationRailItem(
                     selected = selectedTab == MainTab.Profile,
                     onClick = { selectedTab = MainTab.Profile },
-                    icon = {
-                        Icon(Icons.Filled.Person, contentDescription = "Profile")
-                    },
+                    colors = railColors,
+                    icon = { Icon(Icons.Filled.Person, contentDescription = "Profile") },
                     label = { Text("Profile") }
                 )
             }
-        }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            when (selectedTab) {
-                MainTab.Home -> HomeTab(
-                    navController = navController,
-                    onRefreshNotificationBadge = onBadgeRefresh,
-                    onOpenChats = { selectedTab = MainTab.Chats },
-                    onOpenNews = { selectedTab = MainTab.Announcements },
-                    onOpenAlerts = { selectedTab = MainTab.Notifications }
-                )
-                MainTab.Chats -> ChatListScreen(
-                    viewModel = chatListViewModel,
-                    onUserClick = onUserClick,
-                    onLogout = onLogout,
-                    showLogoutInTopBar = false
-                )
-                MainTab.Announcements -> AnnouncementsTab(repository = announcementsRepository)
-                MainTab.Notifications -> NotificationsTab(onCountsChanged = onBadgeRefresh)
-                MainTab.Profile -> ProfileTab(repository = profileRepository, onLogout = onLogout)
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .ajesScreenBackground()
+            ) {
+                when (selectedTab) {
+                    MainTab.Home -> HomeTab(
+                        navController = navController,
+                        onRefreshNotificationBadge = onBadgeRefresh,
+                        onOpenChats = { selectedTab = MainTab.Chats },
+                        onOpenNews = { selectedTab = MainTab.Announcements },
+                        onOpenAlerts = { selectedTab = MainTab.Notifications }
+                    )
+                    MainTab.Chats -> ChatListScreen(
+                        viewModel = chatListViewModel,
+                        onUserClick = onUserClick,
+                        onLogout = onLogout,
+                        showLogoutInTopBar = false
+                    )
+                    MainTab.Announcements -> AnnouncementsTab(repository = announcementsRepository)
+                    MainTab.Notifications -> NotificationsTab(onCountsChanged = onBadgeRefresh)
+                    MainTab.Profile -> ProfileTab(repository = profileRepository, onLogout = onLogout)
+                }
             }
         }
     }

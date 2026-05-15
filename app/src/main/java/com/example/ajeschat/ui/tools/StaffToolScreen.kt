@@ -33,10 +33,11 @@ import com.example.ajeschat.data.RecordRow
 import com.example.ajeschat.data.StaffRepository
 import com.example.ajeschat.data.SysadminModule
 import com.example.ajeschat.data.TeacherHubRow
+import com.example.ajeschat.ui.theme.ajesScreenBackground
 
 @Composable
 fun StaffToolScreen(toolId: String, onBack: () -> Unit) {
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().ajesScreenBackground()) {
         TextButton(onClick = onBack) { Text("Back") }
         when (toolId) {
             "admin_users" -> AdminUsersList()
