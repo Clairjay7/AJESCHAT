@@ -31,13 +31,23 @@ class AuthRepository(
             val msg = "Network error. Check BASE_URL and that AJES is running. ${e.message ?: ""}"
             return@withContext LoginResult.Failure(msg.trim())
         } catch (e: HttpException) {
-            return@withContext LoginResult.Failure(e.message() ?: "Login failed.")
+            val msg = when (e.code()) {
+                403 -> "Administrator accounts can only sign in on the AJES website, not in this mobile app."
+                else -> e.message() ?: "Login failed."
+            }
+            return@withContext LoginResult.Failure(msg)
         }
         when (response.code()) {
             200 -> {
                 val resp = response.body()
                 if (resp?.status == "success" && resp.data != null) {
                     val d = resp.data
+                    val role = d.role?.trim()?.uppercase().orEmpty()
+                    if (role == "ADMIN" || role == "SUPER_ADMIN") {
+                        return@withContext LoginResult.Failure(
+                            "Administrator accounts can only sign in on the AJES website, not in this mobile app."
+                        )
+                    }
                     val session = Session(
                         id = d.userId,
                         name = d.name ?: d.username ?: user,
@@ -56,7 +66,9 @@ class AuthRepository(
                 LoginResult.Failure(msg)
             }
             403 -> {
-                LoginResult.Failure("Account locked. Please contact administrator.")
+                val msg = response.body()?.message
+                    ?: "Administrator accounts can only sign in on the AJES website, not in this mobile app."
+                LoginResult.Failure(msg)
             }
             else -> {
                 val msg = response.body()?.message ?: "Invalid credentials."

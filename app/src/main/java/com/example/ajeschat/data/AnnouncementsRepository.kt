@@ -11,9 +11,15 @@ data class AnnouncementsPage(
 class AnnouncementsRepository(
     private val api: AnnouncementApi
 ) {
-    suspend fun loadPage(): Result<AnnouncementsPage> {
+    suspend fun loadPage(
+        dateFrom: String? = null,
+        dateTo: String? = null
+    ): Result<AnnouncementsPage> {
         return runCatching {
-            val response = api.getAnnouncements()
+            val response = api.getAnnouncements(
+                dateFrom = dateFrom?.takeIf { it.isNotBlank() },
+                dateTo = dateTo?.takeIf { it.isNotBlank() }
+            )
             if (!response.isSuccessful) {
                 throw IllegalStateException("Failed to load announcements (${response.code()})")
             }

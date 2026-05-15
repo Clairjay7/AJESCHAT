@@ -10,9 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -23,10 +21,14 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -49,26 +51,42 @@ import com.example.ajeschat.data.AnnouncementsRepository
 import com.example.ajeschat.data.TeacherSectionOption
 import com.example.ajeschat.session.SessionHolder
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
+private val DATE_PATTERN = Regex("^\\d{4}-\\d{2}-\\d{2}$")
+
+private val DEFAULT_AUDIENCE_OPTIONS = mapOf(
+    "school-wide" to "For all users",
+    "staff-only" to "For staffs only",
+    "students-only" to "For students only",
+    "teachers-only" to "For teachers only"
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnnouncementsTab(
     repository: AnnouncementsRepository
 ) {
+    var refreshKey by remember { mutableIntStateOf(0) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var page by remember { mutableStateOf<AnnouncementsPage?>(null) }
     var showCreate by remember { mutableStateOf(false) }
     var selectedAnnouncement by remember { mutableStateOf<AnnouncementItem?>(null) }
+    var dateFrom by remember { mutableStateOf("") }
+    var dateTo by remember { mutableStateOf("") }
+    var showFromPicker by remember { mutableStateOf(false) }
+    var showToPicker by remember { mutableStateOf(false) }
 
-    fun load() {
+    LaunchedEffect(refreshKey) {
         loading = true
         error = null
-    }
-
-    LaunchedEffect(loading) {
-        if (!loading) return@LaunchedEffect
-        repository.loadPage()
+        val from = dateFrom.trim().takeIf { it.matches(DATE_PATTERN) }
+        val to = dateTo.trim().takeIf { it.matches(DATE_PATTERN) }
+        repository.loadPage(dateFrom = from, dateTo = to)
             .onSuccess {
                 page = it
                 error = null
@@ -83,8 +101,43 @@ fun AnnouncementsTab(
     val effectiveRole = p?.role?.takeIf { it.isNotBlank() } ?: SessionHolder.session?.role
     val roleUpper = effectiveRole?.trim()?.uppercase(Locale.US).orEmpty()
     val isStudent = roleUpper == "STUDENT"
-    // Add for everyone except students (including teachers, even if section list is still loading/empty).
-    val showCreateFab = p != null && !isStudent
+    val showAdd = p != null && !isStudent
+
+    if (showFromPicker) {
+        val pickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showFromPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    pickerState.selectedDateMillis?.let { dateFrom = formatPickerDate(it) }
+                    showFromPicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showFromPicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = pickerState)
+        }
+    }
+
+    if (showToPicker) {
+        val pickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showToPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    pickerState.selectedDateMillis?.let { dateTo = formatPickerDate(it) }
+                    showToPicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showToPicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = pickerState)
+        }
+    }
 
     Box(Modifier.fillMaxSize()) {
         when {
@@ -107,30 +160,26 @@ fun AnnouncementsTab(
                 ) {
                     Text(error ?: "Error", color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(12.dp))
-                    TextButton(onClick = { load() }) { Text("Retry") }
+                    TextButton(onClick = { refreshKey++ }) { Text("Retry") }
                 }
             }
             p != null && p.announcements.isEmpty() -> {
                 Column(Modifier.fillMaxSize()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        TextButton(onClick = { load() }) { Text("Refresh") }
-                        if (showCreateFab) {
-                            TextButton(onClick = { showCreate = true }) {
-                                Icon(
-                                    Icons.Filled.Add,
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(end = 4.dp)
-                                )
-                                Text("Add", fontWeight = FontWeight.SemiBold)
-                            }
+                    AnnouncementsToolbar(
+                        showAdd = showAdd,
+                        dateFrom = dateFrom,
+                        dateTo = dateTo,
+                        onDateFromClick = { showFromPicker = true },
+                        onDateToClick = { showToPicker = true },
+                        onRefresh = { refreshKey++ },
+                        onAdd = { showCreate = true },
+                        onFilter = { refreshKey++ },
+                        onResetFilter = {
+                            dateFrom = ""
+                            dateTo = ""
+                            refreshKey++
                         }
-                    }
+                    )
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -141,7 +190,11 @@ fun AnnouncementsTab(
                             Text("Announcements", style = MaterialTheme.typography.headlineSmall)
                             Spacer(Modifier.height(8.dp))
                             Text(
-                                "No announcements yet.",
+                                if (dateFrom.isNotBlank() || dateTo.isNotBlank()) {
+                                    "No announcements in this date range."
+                                } else {
+                                    "No announcements yet."
+                                },
                                 textAlign = TextAlign.Center,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -152,45 +205,30 @@ fun AnnouncementsTab(
             p != null -> {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 88.dp),
+                    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            TextButton(onClick = { load() }) { Text("Refresh") }
-                            if (showCreateFab) {
-                                TextButton(onClick = { showCreate = true }) {
-                                    Icon(
-                                        Icons.Filled.Add,
-                                        contentDescription = null,
-                                        modifier = Modifier.padding(end = 4.dp)
-                                    )
-                                    Text("Add", fontWeight = FontWeight.SemiBold)
-                                }
+                        AnnouncementsToolbar(
+                            showAdd = showAdd,
+                            dateFrom = dateFrom,
+                            dateTo = dateTo,
+                            onDateFromClick = { showFromPicker = true },
+                            onDateToClick = { showToPicker = true },
+                            onRefresh = { refreshKey++ },
+                            onAdd = { showCreate = true },
+                            onFilter = { refreshKey++ },
+                            onResetFilter = {
+                                dateFrom = ""
+                                dateTo = ""
+                                refreshKey++
                             }
-                        }
+                        )
                     }
                     items(p.announcements) { ann ->
                         AnnouncementCard(ann, onClick = { selectedAnnouncement = ann })
                     }
                 }
-            }
-        }
-
-        if (showCreateFab && !loading && error == null) {
-            FloatingActionButton(
-                onClick = { showCreate = true },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .navigationBarsPadding()
-                    .padding(16.dp),
-                containerColor = MaterialTheme.colorScheme.primary
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = "Add announcement")
             }
         }
     }
@@ -200,7 +238,7 @@ fun AnnouncementsTab(
             page = p,
             repository = repository,
             onDismiss = { showCreate = false },
-            onPublished = { load() }
+            onPublished = { refreshKey++ }
         )
     }
 
@@ -210,9 +248,109 @@ fun AnnouncementsTab(
             canManage = p?.canManage == true,
             repository = repository,
             onDismiss = { selectedAnnouncement = null },
-            onChanged = { load() }
+            onChanged = { refreshKey++ }
         )
     }
+}
+
+@Composable
+private fun AnnouncementsToolbar(
+    showAdd: Boolean,
+    dateFrom: String,
+    dateTo: String,
+    onDateFromClick: () -> Unit,
+    onDateToClick: () -> Unit,
+    onRefresh: () -> Unit,
+    onAdd: () -> Unit,
+    onFilter: () -> Unit,
+    onResetFilter: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(onClick = onRefresh) { Text("Refresh") }
+            if (showAdd) {
+                TextButton(onClick = onAdd) {
+                    Icon(
+                        Icons.Filled.Add,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 4.dp)
+                    )
+                    Text("Add", fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+        HorizontalDivider(Modifier.padding(vertical = 6.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DateFilterField(
+                label = "From",
+                value = dateFrom,
+                onClick = onDateFromClick,
+                modifier = Modifier.weight(1f)
+            )
+            DateFilterField(
+                label = "To",
+                value = dateTo,
+                onClick = onDateToClick,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(onClick = onFilter) { Text("Filter") }
+            if (dateFrom.isNotBlank() || dateTo.isNotBlank()) {
+                TextButton(onClick = onResetFilter) { Text("Reset") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DateFilterField(
+    label: String,
+    value: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(modifier = modifier) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            placeholder = { Text("yyyy-MM-dd") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+        Box(
+            Modifier
+                .matchParentSize()
+                .clickable(onClick = onClick)
+        )
+    }
+}
+
+private fun formatPickerDate(millis: Long): String {
+    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+        timeZone = TimeZone.getDefault()
+    }
+    return sdf.format(Date(millis))
 }
 
 @Composable
@@ -371,19 +509,24 @@ private fun CreateAnnouncementDialog(
     val scope = rememberCoroutineScope()
     var title by remember { mutableStateOf("") }
     var body by remember { mutableStateOf("") }
-    var selectedSectionId by remember {
-        mutableIntStateOf(page.teacherSections.firstOrNull()?.id ?: -1)
+    val audienceOrder = listOf("school-wide", "staff-only", "students-only", "teachers-only")
+    val audienceOptions = remember(page.audienceOptions, page.role) {
+        if (page.audienceOptions.isNotEmpty()) {
+            page.audienceOptions
+        } else if (page.role.trim().uppercase(Locale.US) == "TEACHER") {
+            DEFAULT_AUDIENCE_OPTIONS
+        } else {
+            emptyMap()
+        }
     }
-    val audienceKeys = remember(page.audienceOptions) { page.audienceOptions.keys.toList().sorted() }
+    val audienceKeys = remember(audienceOptions) {
+        audienceOrder.filter { audienceOptions.containsKey(it) }.ifEmpty { audienceOptions.keys.toList() }
+    }
     var selectedAudience by remember {
         mutableStateOf(audienceKeys.firstOrNull() ?: "school-wide")
     }
     var localError by remember { mutableStateOf<String?>(null) }
     var submitting by remember { mutableStateOf(false) }
-
-    val isTeacher = page.role.trim().uppercase(Locale.US) == "TEACHER"
-    val needsSection = isTeacher && page.teacherSections.isNotEmpty()
-    val teacherNoSections = isTeacher && page.teacherSections.isEmpty()
 
     AlertDialog(
         onDismissRequest = { if (!submitting) onDismiss() },
@@ -397,14 +540,6 @@ private fun CreateAnnouncementDialog(
                 if (localError != null) {
                     Text(localError!!, color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(8.dp))
-                }
-                if (teacherNoSections) {
-                    Text(
-                        "You are not assigned to any section yet. Ask your administrator to assign you to a class before posting an announcement.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(12.dp))
                 }
                 OutlinedTextField(
                     value = title,
@@ -422,39 +557,12 @@ private fun CreateAnnouncementDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                if (needsSection) {
-                    Spacer(Modifier.height(12.dp))
-                    Text("Section", style = MaterialTheme.typography.labelLarge)
-                    Spacer(Modifier.height(4.dp))
-                    page.teacherSections.forEach { sec: TeacherSectionOption ->
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable(enabled = !submitting) {
-                                    selectedSectionId = sec.id
-                                    localError = null
-                                },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = selectedSectionId == sec.id,
-                                onClick = {
-                                    selectedSectionId = sec.id
-                                    localError = null
-                                },
-                                enabled = !submitting
-                            )
-                            Text(sec.display_label, style = MaterialTheme.typography.bodyMedium)
-                        }
-                    }
-                }
-
                 if (audienceKeys.isNotEmpty()) {
                     Spacer(Modifier.height(12.dp))
                     Text("Audience", style = MaterialTheme.typography.labelLarge)
                     Spacer(Modifier.height(4.dp))
                     audienceKeys.forEach { key ->
-                        val label = page.audienceOptions[key] ?: key
+                        val label = audienceOptions[key] ?: key
                         Row(
                             Modifier
                                 .fillMaxWidth()
@@ -480,7 +588,7 @@ private fun CreateAnnouncementDialog(
         },
         confirmButton = {
             Button(
-                enabled = !submitting && !teacherNoSections,
+                enabled = !submitting,
                 onClick = {
                     val t = title.trim()
                     val b = body.trim()
@@ -488,20 +596,11 @@ private fun CreateAnnouncementDialog(
                         localError = "Title and message are required."
                         return@Button
                     }
-                    if (teacherNoSections) {
-                        localError = "You need at least one assigned section to publish."
-                        return@Button
-                    }
-                    if (needsSection && selectedSectionId < 1) {
-                        localError = "Please choose a section."
-                        return@Button
-                    }
                     localError = null
-                    val sectionId = if (needsSection) selectedSectionId else null
-                    val audience = if (audienceKeys.isNotEmpty()) selectedAudience else null
                     scope.launch {
                         submitting = true
-                        repository.create(t, b, sectionId, audience)
+                        val audience = selectedAudience.takeIf { audienceKeys.isNotEmpty() }
+                        repository.create(t, b, sectionId = null, audienceType = audience)
                             .onSuccess {
                                 onPublished()
                                 onDismiss()

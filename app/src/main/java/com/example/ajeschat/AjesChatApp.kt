@@ -21,7 +21,13 @@ class AjesChatApp : Application(), ImageLoaderFactory {
         super.onCreate()
         val sessionStore = SessionStore(this)
         sessionStore.load()?.let { s ->
-            if (s.token.isNotBlank()) SessionHolder.updateSession(s) else sessionStore.clear()
+            val role = s.role.trim().uppercase()
+            val webOnlyAdmin = role == "ADMIN" || role == "SUPER_ADMIN"
+            if (s.token.isNotBlank() && !webOnlyAdmin) {
+                SessionHolder.updateSession(s)
+            } else {
+                sessionStore.clear()
+            }
         }
         ApiModule.init(this)
         authRepository = AuthRepository(

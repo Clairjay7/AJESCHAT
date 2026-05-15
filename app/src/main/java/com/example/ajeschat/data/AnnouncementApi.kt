@@ -6,10 +6,14 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface AnnouncementApi {
     @GET("api/announcements")
-    suspend fun getAnnouncements(): Response<AnnouncementsResponse>
+    suspend fun getAnnouncements(
+        @Query("date_from") dateFrom: String? = null,
+        @Query("date_to") dateTo: String? = null
+    ): Response<AnnouncementsResponse>
 
     @POST("api/announcements")
     suspend fun createAnnouncement(@Body body: AnnouncementCreateRequest): Response<AnnouncementCreateResponse>
