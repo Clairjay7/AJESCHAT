@@ -9,7 +9,7 @@
 ## Base URL
 
 - **Emulator:** `http://10.0.2.2/AJES/` (already set in debug `BuildConfig`).
-- **Real device (same network as PC):** Use your PC’s IP, e.g. `http://192.168.1.100/AJES/`.
+- **Real device (same network as PC):** Use your PC’s IP, e.g. `http://192.168.1.6/AJES/`.
   - Change in `app/build.gradle.kts`: `buildConfigField("String", "BASE_URL", "\"http://YOUR_IP/AJES/\"")` for the build type you use.
 - **Production:** Set in `release` build type to your HTTPS URL.
 

@@ -120,7 +120,12 @@ private fun TeacherHubList() {
         else -> LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { Text("Invites", style = MaterialTheme.typography.titleMedium) }
             items(invites, key = { it.assignmentId }) { r ->
-                Text("${r.sectionName} — ${r.status} — ${r.subjectName}", style = MaterialTheme.typography.bodyMedium)
+                val label = r.displayLabel?.takeIf { it.isNotBlank() }
+                    ?: "${r.sectionName.orEmpty()} (${r.gradeLevel.orEmpty()})"
+                Text(
+                    "$label — ${r.roleLabel ?: r.assignmentRole ?: "pending"}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
             item { Text("Accepted sections", style = MaterialTheme.typography.titleMedium) }
             items(sections, key = { it.assignmentId }) { r ->

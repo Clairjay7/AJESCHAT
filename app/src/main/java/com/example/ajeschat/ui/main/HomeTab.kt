@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import com.example.ajeschat.ui.theme.ajesScreenBackground
 import com.example.ajeschat.ui.theme.ajesTextButtonColors
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,40 +11,42 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
 import com.example.ajeschat.data.ApiModule
 import com.example.ajeschat.data.MobileRepository
 import com.example.ajeschat.data.MobileSummaryData
+import com.example.ajeschat.data.SectionInviteRow
+import com.example.ajeschat.data.StaffRepository
 
 @Composable
 fun HomeTab(
-    navController: NavHostController,
-    onRefreshNotificationBadge: () -> Unit,
-    onOpenChats: () -> Unit = {},
-    onOpenNews: () -> Unit = {},
-    onOpenAlerts: () -> Unit = {}
+    onRefreshNotificationBadge: () -> Unit
 ) {
     val repo = remember { MobileRepository(ApiModule.getMobileApi()) }
+    val staffRepo = remember { StaffRepository(ApiModule.getStaffApi()) }
+    val scope = rememberCoroutineScope()
     var nonce by remember { mutableStateOf(0) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var summary by remember { mutableStateOf<MobileSummaryData?>(null) }
+    var inviteActionError by remember { mutableStateOf<String?>(null) }
+    var busyInviteId by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(nonce) {
         loading = true
@@ -56,7 +57,14 @@ fun HomeTab(
                 error = null
             }
             .onFailure { e ->
-                error = e.message ?: "Failed to load home"
+                val raw = e.message.orEmpty()
+                error = when {
+                    raw.contains("401", ignoreCase = true) ||
+                        raw.contains("Unauthorized", ignoreCase = true) ||
+                        raw.contains("Session expired", ignoreCase = true) ->
+                        "Could not load dashboard. Please log out from Profile, then sign in again."
+                    else -> raw.ifBlank { "Failed to load home" }
+                }
             }
         loading = false
     }
@@ -69,11 +77,6 @@ fun HomeTab(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            "Dashboard",
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onBackground
-        )
         when {
             loading -> {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
@@ -86,9 +89,50 @@ fun HomeTab(
                 val s = summary!!
                 val d = s.dashboard
                 val roleUpper = s.role?.uppercase().orEmpty()
+                val sectionInvites: List<SectionInviteRow> = s.sectionInvites.ifEmpty {
+                    d?.sectionInvites.orEmpty()
+                }
+
+                fun reloadHome() {
+                    nonce++
+                    onRefreshNotificationBadge()
+                }
+
+                fun acceptInvite(assignmentId: Int) {
+                    if (assignmentId < 1) return
+                    busyInviteId = assignmentId
+                    inviteActionError = null
+                    scope.launch {
+                        staffRepo.acceptSectionInvite(assignmentId)
+                            .onSuccess { reloadHome() }
+                            .onFailure { inviteActionError = it.message ?: "Could not accept invite" }
+                        busyInviteId = 0
+                    }
+                }
+
+                fun declineInvite(assignmentId: Int) {
+                    if (assignmentId < 1) return
+                    busyInviteId = assignmentId
+                    inviteActionError = null
+                    scope.launch {
+                        staffRepo.declineSectionInvite(assignmentId)
+                            .onSuccess { reloadHome() }
+                            .onFailure { inviteActionError = it.message ?: "Could not decline invite" }
+                        busyInviteId = 0
+                    }
+                }
 
                 if (d != null) {
                     DashboardWelcomeCard(s.name ?: "User", d.welcomeLine)
+                    if (roleUpper == "TEACHER" && sectionInvites.isNotEmpty()) {
+                        DashboardSectionInvitesCard(
+                            invites = sectionInvites,
+                            actionError = inviteActionError,
+                            busyAssignmentId = busyInviteId.takeIf { it > 0 },
+                            onAccept = { acceptInvite(it) },
+                            onDecline = { declineInvite(it) }
+                        )
+                    }
                     d.kpis?.takeIf { it.isNotEmpty() }?.let { DashboardKpiStack(it) }
                     DashboardQuickHighlightsCard(dashboardHighlights(d.variant))
 
@@ -136,7 +180,13 @@ fun HomeTab(
                             DashboardSectionActivityCard(d.sectionActivity.orEmpty())
                         }
                         "student" -> {
-                            DashboardMessagesCallout(onOpenChats)
+                            DashboardStudentSectionCard(d.section)
+                            if (d.hasSection == true) {
+                                DashboardStudentTeachersCard(d.teachersBySubject)
+                                DashboardStudentClassmatesCard(d.classmates)
+                            }
+                            DashboardMessagesCallout()
+                            d.kpis?.takeIf { it.isNotEmpty() }?.let { DashboardKpiStack(it) }
                             DashboardStudentUpdates()
                             DashboardRecentAnnouncementsCard(
                                 title = "Recent announcements (your grade & section)",
@@ -151,22 +201,6 @@ fun HomeTab(
                             )
                         }
                         "leadership" -> {
-                            if (roleUpper == "VICE_PRINCIPAL" || roleUpper == "HEAD_TEACHER") {
-                                DashboardVicePrincipalQuickAccess(
-                                    onOpenNews = onOpenNews,
-                                    onOpenChats = onOpenChats,
-                                    onOpenRecordsTool = {
-                                        navController.navigate("tools/records")
-                                        onRefreshNotificationBadge()
-                                    },
-                                    onOpenChatLogsTool = {
-                                        navController.navigate("tools/chat_logs")
-                                        onRefreshNotificationBadge()
-                                    },
-                                    showRecords = s.records,
-                                    showChatLogs = s.chatLogs
-                                )
-                            }
                             DashboardLeadershipUpdates(d)
                             DashboardRecentAnnouncementsCard(
                                 title = "Recent announcements",
@@ -181,7 +215,6 @@ fun HomeTab(
                             )
                         }
                         "announcer" -> {
-                            DashboardAnnouncerQuickAction(onOpenNews)
                             DashboardRecentAnnouncementsCard(
                                 title = "Recent announcements",
                                 rows = d.recentAnnouncements.orEmpty(),
@@ -205,7 +238,7 @@ fun HomeTab(
                             DashboardUpdatesCard(
                                 "Guidance overview",
                                 listOf(
-                                    "📁" to "Manage counseling-related records; open Records from shortcuts below when available.",
+                                    "📁" to "Manage counseling-related records on the AJES website.",
                                     "📢" to "Student-facing announcements appear in News.",
                                     "💬" to "Coordinate with teachers using Chats."
                                 )
@@ -224,17 +257,16 @@ fun HomeTab(
                         }
                     }
 
-                    Spacer(Modifier.height(4.dp))
-                    Text("Go to", style = MaterialTheme.typography.titleSmall)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        FilledTonalButton(onClick = onOpenChats, modifier = Modifier.weight(1f)) { Text("Chats") }
-                        FilledTonalButton(onClick = onOpenNews, modifier = Modifier.weight(1f)) { Text("News") }
-                        FilledTonalButton(onClick = onOpenAlerts, modifier = Modifier.weight(1f)) { Text("Alerts") }
-                    }
                 } else {
+                    if (roleUpper == "TEACHER" && sectionInvites.isNotEmpty()) {
+                        DashboardSectionInvitesCard(
+                            invites = sectionInvites,
+                            actionError = inviteActionError,
+                            busyAssignmentId = busyInviteId.takeIf { it > 0 },
+                            onAccept = { acceptInvite(it) },
+                            onDecline = { declineInvite(it) }
+                        )
+                    }
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp)) {
                             Text(s.name ?: "User", style = MaterialTheme.typography.titleMedium)
@@ -253,49 +285,7 @@ fun HomeTab(
                     }
                 }
 
-                Text("Shortcuts", style = MaterialTheme.typography.titleMedium)
-                if (s.userManagementRead) {
-                    ToolNavButton("Users (admin)", "tools/admin_users", navController, onRefreshNotificationBadge)
-                }
-                if (s.sectionsRead) {
-                    ToolNavButton("Sections (admin)", "tools/admin_sections", navController, onRefreshNotificationBadge)
-                }
-                if (s.teacherSections) {
-                    ToolNavButton("My teaching", "tools/teacher", navController, onRefreshNotificationBadge)
-                }
-                if (s.records) {
-                    ToolNavButton("Records", "tools/records", navController, onRefreshNotificationBadge)
-                }
-                if (s.chatLogs) {
-                    ToolNavButton("Chat logs", "tools/chat_logs", navController, onRefreshNotificationBadge)
-                }
-                if (s.systemSettings || s.chatbotManagement || s.backupRestore || s.securityLogs) {
-                    ToolNavButton("System admin (links)", "tools/sysadmin", navController, onRefreshNotificationBadge)
-                }
-                Text(
-                    "Dangerous or full workflows stay in the browser; this app opens read-only lists and links where noted.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
-    }
-}
-
-@Composable
-private fun ToolNavButton(
-    label: String,
-    route: String,
-    navController: NavHostController,
-    onRefreshNotificationBadge: () -> Unit
-) {
-    Button(
-        onClick = {
-            navController.navigate(route)
-            onRefreshNotificationBadge()
-        },
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text(label)
     }
 }

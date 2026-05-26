@@ -15,9 +15,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +32,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.ajeschat.data.MobileDashboardAnnRow
+import com.example.ajeschat.data.SectionInviteRow
+import com.example.ajeschat.data.StudentClassmateRow
+import com.example.ajeschat.data.StudentSectionInfo
+import com.example.ajeschat.data.StudentTeacherSubjectRow
 import com.example.ajeschat.data.MobileDashboardBarDay
 import com.example.ajeschat.data.MobileDashboardBundle
 import com.example.ajeschat.data.MobileDashboardKpi
@@ -467,7 +472,7 @@ internal fun DashboardLeadershipUpdates(bundle: MobileDashboardBundle) {
     val ann = bundle.recentAnnouncements?.firstOrNull()?.title ?: "School announcements"
     val lines = listOf(
         "📢" to "Latest: $ann",
-        "👥" to "Use Records and Chat logs from shortcuts when available.",
+        "👥" to "Use Records and Chat logs on the AJES website when needed.",
         "💬" to "Open Chats to follow up with staff and students."
     )
     DashboardUpdatesCard("Updates", lines)
@@ -486,67 +491,194 @@ internal fun DashboardStudentUpdates() {
 }
 
 @Composable
-internal fun DashboardMessagesCallout(onOpenChats: () -> Unit) {
+internal fun DashboardMessagesCallout() {
     Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
         Column(Modifier.padding(14.dp)) {
             Text("Messages", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Text(
-                "Messages from your teachers and the guidance office appear in Chats.",
+                "Messages from your teachers and the guidance office appear in the Chats tab.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(Modifier.height(10.dp))
-            FilledTonalButton(onClick = onOpenChats) {
-                Text("Open Chats")
-            }
         }
     }
 }
 
 @Composable
-internal fun DashboardAnnouncerQuickAction(onOpenNews: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
-        Column(Modifier.padding(14.dp)) {
-            Text("Quick action", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Text(
-                "Create a new announcement to send to students, teachers, or the whole school.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(Modifier.height(10.dp))
-            FilledTonalButton(onClick = onOpenNews) {
-                Text("Open News")
-            }
-        }
-    }
-}
-
-@Composable
-internal fun DashboardVicePrincipalQuickAccess(
-    onOpenNews: () -> Unit,
-    onOpenChats: () -> Unit,
-    onOpenRecordsTool: () -> Unit,
-    onOpenChatLogsTool: () -> Unit,
-    showRecords: Boolean,
-    showChatLogs: Boolean
-) {
-    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
-        Column(Modifier.padding(14.dp)) {
-            Text("Quick access", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Text(
-                "Announcements, reports, chat monitoring, and messaging — same focus as the AJES vice-principal dashboard.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(10.dp))
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilledTonalButton(onClick = onOpenNews) { Text("News") }
-                FilledTonalButton(onClick = onOpenChats) { Text("Chats") }
-                if (showRecords) {
-                    FilledTonalButton(onClick = onOpenRecordsTool) { Text("Records") }
+internal fun DashboardStudentSectionCard(section: StudentSectionInfo?) {
+    val label = section?.displayLabel?.takeIf { it.isNotBlank() }
+        ?: listOfNotNull(section?.gradeLevel, section?.sectionName).filter { it.isNotBlank() }.joinToString(" — ")
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .ajesCardBorder(),
+        colors = ajesCardColors(),
+        elevation = ajesCardElevation(),
+        shape = AjesCardShapeMedium
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("My section", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            if (label.isBlank()) {
+                Text(
+                    "You are not assigned to a section yet. Ask your teacher or admin.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = AjesTextSecondary
+                )
+            } else {
+                Text(label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+                section?.adviserName?.takeIf { it.isNotBlank() }?.let { adv ->
+                    Text("Class adviser: $adv", style = MaterialTheme.typography.bodySmall, color = AjesTextSecondary)
                 }
-                if (showChatLogs) {
-                    FilledTonalButton(onClick = onOpenChatLogsTool) { Text("Chat logs") }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun DashboardStudentTeachersCard(teachers: List<StudentTeacherSubjectRow>) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .ajesCardBorder(),
+        colors = ajesCardColors(),
+        elevation = ajesCardElevation(),
+        shape = AjesCardShapeMedium
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Teachers by subject", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            if (teachers.isEmpty()) {
+                Text(
+                    "No subject schedule yet. Ask your class adviser or admin.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = AjesTextSecondary
+                )
+            } else {
+                teachers.forEach { t ->
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                            .padding(10.dp)
+                    ) {
+                        Text(t.subject ?: "—", fontWeight = FontWeight.Medium)
+                        Text(
+                            t.teacherName?.takeIf { it.isNotBlank() } ?: "To be assigned",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        val meta = listOfNotNull(
+                            t.roleLabel?.takeIf { it.isNotBlank() },
+                            t.timeLabel?.takeIf { it.isNotBlank() }
+                        ).joinToString(" · ")
+                        if (meta.isNotBlank()) {
+                            Text(meta, style = MaterialTheme.typography.bodySmall, color = AjesTextSecondary)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun DashboardStudentClassmatesCard(classmates: List<StudentClassmateRow>) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .ajesCardBorder(),
+        colors = ajesCardColors(),
+        elevation = ajesCardElevation(),
+        shape = AjesCardShapeMedium
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                "Classmates (${classmates.size})",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            if (classmates.isEmpty()) {
+                Text(
+                    "No other students in this section yet.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = AjesTextSecondary
+                )
+            } else {
+                classmates.forEach { cm ->
+                    val suffix = if (cm.isSelf) " (you)" else ""
+                    Text(
+                        (cm.name ?: "Student") + suffix,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (cm.isSelf) FontWeight.SemiBold else FontWeight.Normal
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun DashboardSectionInvitesCard(
+    invites: List<SectionInviteRow>,
+    actionError: String?,
+    busyAssignmentId: Int?,
+    onAccept: (Int) -> Unit,
+    onDecline: (Int) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .ajesCardBorder(),
+        colors = ajesCardColors(),
+        elevation = ajesCardElevation(),
+        shape = AjesCardShapeMedium
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                "Section invites",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = AjesTextPrimary
+            )
+            Text(
+                "Admin invited you as class adviser or subject teacher. Accept to manage that section and receive announcements for it.",
+                style = MaterialTheme.typography.bodySmall,
+                color = AjesTextSecondary
+            )
+            if (actionError != null) {
+                Text(actionError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
+            invites.forEach { inv ->
+                val label = inv.displayLabel?.takeIf { it.isNotBlank() }
+                    ?: listOfNotNull(inv.gradeLevel, inv.sectionName).filter { it.isNotBlank() }.joinToString(" — ")
+                    .ifBlank { "Section #${inv.sectionId}" }
+                val role = inv.roleLabel?.takeIf { it.isNotBlank() } ?: "Class Adviser"
+                val busy = busyAssignmentId == inv.assignmentId && inv.assignmentId > 0
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+                    Text(role, style = MaterialTheme.typography.bodySmall, color = AjesTextSecondary)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = { onAccept(inv.assignmentId) },
+                            enabled = !busy && inv.assignmentId > 0,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(if (busy) "…" else "Accept")
+                        }
+                        OutlinedButton(
+                            onClick = { onDecline(inv.assignmentId) },
+                            enabled = !busy && inv.assignmentId > 0,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Decline")
+                        }
+                    }
                 }
             }
         }

@@ -1,6 +1,7 @@
 package com.example.ajeschat.ui.main
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -26,6 +28,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -71,12 +75,15 @@ import java.util.TimeZone
 
 private val DATE_PATTERN = Regex("^\\d{4}-\\d{2}-\\d{2}$")
 
-private val DEFAULT_AUDIENCE_OPTIONS = mapOf(
-    "school-wide" to "For all users",
-    "staff-only" to "For staffs only",
-    "students-only" to "For students only",
-    "teachers-only" to "For teachers only"
+private val ANNOUNCEMENT_PERIOD_OPTIONS = listOf(
+    "all" to "All",
+    "today" to "Today",
+    "yesterday" to "Yesterday",
+    "week" to "Last week",
+    "month" to "Last month"
 )
+
+private enum class DatePickTarget { FROM, TO }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,17 +96,25 @@ fun AnnouncementsTab(
     var page by remember { mutableStateOf<AnnouncementsPage?>(null) }
     var showCreate by remember { mutableStateOf(false) }
     var selectedAnnouncement by remember { mutableStateOf<AnnouncementItem?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+    var periodFilter by remember { mutableStateOf("all") }
     var dateFrom by remember { mutableStateOf("") }
     var dateTo by remember { mutableStateOf("") }
-    var showFromPicker by remember { mutableStateOf(false) }
-    var showToPicker by remember { mutableStateOf(false) }
+    var datePickTarget by remember { mutableStateOf<DatePickTarget?>(null) }
 
     LaunchedEffect(refreshKey) {
         loading = true
         error = null
         val from = dateFrom.trim().takeIf { it.matches(DATE_PATTERN) }
         val to = dateTo.trim().takeIf { it.matches(DATE_PATTERN) }
-        repository.loadPage(dateFrom = from, dateTo = to)
+        val hasDateRange = from != null || to != null
+        val q = searchQuery.trim().takeIf { it.isNotBlank() }
+        repository.loadPage(
+            dateFrom = from,
+            dateTo = to,
+            search = q,
+            period = if (!hasDateRange) periodFilter else null
+        )
             .onSuccess {
                 page = it
                 error = null
@@ -113,39 +128,27 @@ fun AnnouncementsTab(
     val p = page
     val effectiveRole = p?.role?.takeIf { it.isNotBlank() } ?: SessionHolder.session?.role
     val roleUpper = effectiveRole?.trim()?.uppercase(Locale.US).orEmpty()
-    val isStudent = roleUpper == "STUDENT"
-    val showAdd = p != null && !isStudent
+    val showAdd = p?.canCreate == true
 
-    if (showFromPicker) {
+    datePickTarget?.let { target ->
         val pickerState = rememberDatePickerState()
         DatePickerDialog(
-            onDismissRequest = { showFromPicker = false },
+            onDismissRequest = { datePickTarget = null },
             confirmButton = {
                 TextButton(onClick = {
-                    pickerState.selectedDateMillis?.let { dateFrom = formatPickerDate(it) }
-                    showFromPicker = false
+                    pickerState.selectedDateMillis?.let { millis ->
+                        val picked = formatPickerDate(millis)
+                        when (target) {
+                            DatePickTarget.FROM -> dateFrom = picked
+                            DatePickTarget.TO -> dateTo = picked
+                        }
+                        periodFilter = "all"
+                    }
+                    datePickTarget = null
                 }) { Text("OK") }
             },
             dismissButton = {
-                TextButton(onClick = { showFromPicker = false }) { Text("Cancel") }
-            }
-        ) {
-            DatePicker(state = pickerState)
-        }
-    }
-
-    if (showToPicker) {
-        val pickerState = rememberDatePickerState()
-        DatePickerDialog(
-            onDismissRequest = { showToPicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    pickerState.selectedDateMillis?.let { dateTo = formatPickerDate(it) }
-                    showToPicker = false
-                }) { Text("OK") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showToPicker = false }) { Text("Cancel") }
+                TextButton(onClick = { datePickTarget = null }) { Text("Cancel") }
             }
         ) {
             DatePicker(state = pickerState)
@@ -155,16 +158,27 @@ fun AnnouncementsTab(
     Column(Modifier.fillMaxSize().ajesScreenBackground()) {
         AnnouncementsToolbar(
             showAdd = showAdd,
+            searchQuery = searchQuery,
+            onSearchChange = { searchQuery = it },
+            periodFilter = periodFilter,
+            onPeriodChange = { key ->
+                periodFilter = key
+                dateFrom = ""
+                dateTo = ""
+                refreshKey++
+            },
             dateFrom = dateFrom,
             dateTo = dateTo,
-            onDateFromClick = { showFromPicker = true },
-            onDateToClick = { showToPicker = true },
+            onDateFromClick = { datePickTarget = DatePickTarget.FROM },
+            onDateToClick = { datePickTarget = DatePickTarget.TO },
             onRefresh = { refreshKey++ },
             onAdd = { showCreate = true },
             onFilter = { refreshKey++ },
             onResetFilter = {
+                searchQuery = ""
                 dateFrom = ""
                 dateTo = ""
+                periodFilter = "all"
                 refreshKey++
             }
         )
@@ -202,8 +216,8 @@ fun AnnouncementsTab(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        if (dateFrom.isNotBlank() || dateTo.isNotBlank()) {
-                            "No announcements in this date range."
+                        if (searchQuery.isNotBlank() || dateFrom.isNotBlank() || dateTo.isNotBlank() || periodFilter != "all") {
+                            "No announcements match your filter."
                         } else {
                             "No announcements yet."
                         },
@@ -214,13 +228,19 @@ fun AnnouncementsTab(
                 }
             }
             p != null -> {
+                val grouped = remember(p.announcements) { groupAnnouncementsByDate(p.announcements) }
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(p.announcements, key = { it.id }) { ann ->
-                        AnnouncementCard(ann, onClick = { selectedAnnouncement = ann })
+                    grouped.forEach { (dateHeader, items) ->
+                        item(key = "hdr-$dateHeader") {
+                            AnnouncementDateHeader(dateHeader)
+                        }
+                        items(items, key = { it.id }) { ann ->
+                            AnnouncementCard(ann, onClick = { selectedAnnouncement = ann })
+                        }
                     }
                 }
             }
@@ -250,6 +270,10 @@ fun AnnouncementsTab(
 @Composable
 private fun AnnouncementsToolbar(
     showAdd: Boolean,
+    searchQuery: String,
+    onSearchChange: (String) -> Unit,
+    periodFilter: String,
+    onPeriodChange: (String) -> Unit,
     dateFrom: String,
     dateTo: String,
     onDateFromClick: () -> Unit,
@@ -302,10 +326,41 @@ private fun AnnouncementsToolbar(
         ) {
             Column(Modifier.padding(12.dp)) {
                 Text(
-                    "Filter by date",
+                    "Filter",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = AjesTextPrimary
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(top = 8.dp, bottom = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ANNOUNCEMENT_PERIOD_OPTIONS.forEach { (key, label) ->
+                        FilterChip(
+                            selected = periodFilter == key && dateFrom.isBlank() && dateTo.isBlank(),
+                            onClick = { onPeriodChange(key) },
+                            label = { Text(label) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = AjesGreen,
+                                selectedLabelColor = AjesOnGreen
+                            )
+                        )
+                    }
+                }
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = onSearchChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("Search", color = AjesTextPrimary) },
+                    placeholder = { Text("Title or message…", color = AjesTextSecondary) },
+                    leadingIcon = {
+                        Icon(Icons.Filled.Search, contentDescription = null, tint = AjesGreen)
+                    },
+                    colors = ajesTextFieldColors()
                 )
                 Spacer(Modifier.height(8.dp))
                 Row(
@@ -316,12 +371,14 @@ private fun AnnouncementsToolbar(
                     DateFilterField(
                         label = "From",
                         value = dateFrom,
+                        displayValue = dateFrom.ifBlank { "Tap to pick" },
                         onClick = onDateFromClick,
                         modifier = Modifier.weight(1f)
                     )
                     DateFilterField(
                         label = "To",
                         value = dateTo,
+                        displayValue = dateTo.ifBlank { "Tap to pick" },
                         onClick = onDateToClick,
                         modifier = Modifier.weight(1f)
                     )
@@ -333,10 +390,16 @@ private fun AnnouncementsToolbar(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TextButton(onClick = onFilter, colors = ajesTextButtonColors()) {
-                        Text("Filter", color = AjesTextPrimary, fontWeight = FontWeight.SemiBold)
+                    Button(
+                        onClick = onFilter,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = AjesGreen,
+                            contentColor = AjesOnGreen
+                        )
+                    ) {
+                        Text("Apply", fontWeight = FontWeight.SemiBold)
                     }
-                    if (dateFrom.isNotBlank() || dateTo.isNotBlank()) {
+                    if (searchQuery.isNotBlank() || dateFrom.isNotBlank() || dateTo.isNotBlank() || periodFilter != "all") {
                         TextButton(onClick = onResetFilter, colors = ajesTextButtonColors()) {
                             Text("Reset", color = AjesTextPrimary, fontWeight = FontWeight.SemiBold)
                         }
@@ -348,19 +411,78 @@ private fun AnnouncementsToolbar(
 }
 
 @Composable
+private fun AnnouncementDateHeader(label: String) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Bold,
+        color = AjesGreen,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 6.dp, bottom = 2.dp)
+    )
+}
+
+private fun groupAnnouncementsByDate(items: List<AnnouncementItem>): List<Pair<String, List<AnnouncementItem>>> {
+    return items
+        .groupBy { formatAnnouncementDateHeader(it.created_at) }
+        .entries
+        .sortedByDescending { entry ->
+            entry.value.firstOrNull()?.created_at?.let { announcementSortKey(it) }.orEmpty()
+        }
+        .map { it.key to it.value }
+}
+
+private fun announcementSortKey(createdAt: String): String {
+    val raw = createdAt.trim()
+    if (raw.length >= 10 && raw[4] == '-' && raw[7] == '-') {
+        return raw.substring(0, 10)
+    }
+    return raw
+}
+
+private fun formatAnnouncementDateHeader(createdAt: String?): String {
+    val key = createdAt?.trim()?.let { announcementSortKey(it) }.orEmpty()
+    if (!key.matches(DATE_PATTERN)) {
+        return "Other dates"
+    }
+    return runCatching {
+        val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(key) ?: return "Other dates"
+        SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()).format(parsed)
+    }.getOrDefault(key)
+}
+
+private fun formatAnnouncementDateTime(createdAt: String?): String {
+    val raw = createdAt?.trim().orEmpty()
+    if (raw.isBlank()) return ""
+    val key = announcementSortKey(raw)
+    val datePart = if (key.matches(DATE_PATTERN)) {
+        runCatching {
+            val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(key)
+            parsed?.let { SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(it) } ?: key
+        }.getOrDefault(key)
+    } else {
+        key
+    }
+    val timePart = if (raw.length >= 16) raw.substring(11, 16) else ""
+    return if (timePart.isNotBlank()) "$datePart · $timePart" else datePart
+}
+
+@Composable
 private fun DateFilterField(
     label: String,
     value: String,
+    displayValue: String = value,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier) {
         OutlinedTextField(
-            value = value,
+            value = displayValue,
             onValueChange = {},
             readOnly = true,
             label = { Text(label, color = AjesTextPrimary) },
-            placeholder = { Text("yyyy-MM-dd", color = AjesTextSecondary) },
+            placeholder = { Text("All dates", color = AjesTextSecondary) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             colors = ajesTextFieldColors()
@@ -493,10 +615,10 @@ private fun AnnouncementDetailDialog(
 
 @Composable
 private fun AnnouncementCard(ann: AnnouncementItem, onClick: () -> Unit) {
+    val dateLine = formatAnnouncementDateTime(ann.created_at)
     val meta = listOfNotNull(
         ann.created_by_name?.takeIf { it.isNotBlank() },
-        ann.audience_type?.takeIf { it.isNotBlank() },
-        ann.created_at?.takeIf { it.isNotBlank() }
+        ann.audience_type?.takeIf { it.isNotBlank() }
     ).joinToString(" • ")
 
     Card(
@@ -512,6 +634,15 @@ private fun AnnouncementCard(ann: AnnouncementItem, onClick: () -> Unit) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(Modifier.padding(14.dp)) {
+            if (dateLine.isNotBlank()) {
+                Text(
+                    text = dateLine,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = AjesGreen
+                )
+                Spacer(Modifier.height(4.dp))
+            }
             Text(
                 text = ann.title.ifBlank { "Announcement" },
                 style = MaterialTheme.typography.bodyLarge,
@@ -550,21 +681,21 @@ private fun CreateAnnouncementDialog(
     val scope = rememberCoroutineScope()
     var title by remember { mutableStateOf("") }
     var body by remember { mutableStateOf("") }
+    val roleUpper = page.role.trim().uppercase(Locale.US)
+    val isTeacher = roleUpper == "TEACHER"
+    val teacherSections = page.teacherSections
     val audienceOrder = listOf("school-wide", "staff-only", "students-only", "teachers-only")
-    val audienceOptions = remember(page.audienceOptions, page.role) {
-        if (page.audienceOptions.isNotEmpty()) {
-            page.audienceOptions
-        } else if (page.role.trim().uppercase(Locale.US) == "TEACHER") {
-            DEFAULT_AUDIENCE_OPTIONS
-        } else {
-            emptyMap()
-        }
+    val audienceOptions = remember(page.audienceOptions) {
+        if (page.audienceOptions.isNotEmpty()) page.audienceOptions else emptyMap()
     }
     val audienceKeys = remember(audienceOptions) {
         audienceOrder.filter { audienceOptions.containsKey(it) }.ifEmpty { audienceOptions.keys.toList() }
     }
     var selectedAudience by remember {
         mutableStateOf(audienceKeys.firstOrNull() ?: "school-wide")
+    }
+    var selectedSectionId by remember(teacherSections) {
+        mutableIntStateOf(teacherSections.firstOrNull()?.id ?: 0)
     }
     var localError by remember { mutableStateOf<String?>(null) }
     var submitting by remember { mutableStateOf(false) }
@@ -600,7 +731,51 @@ private fun CreateAnnouncementDialog(
                     colors = ajesTextFieldColors()
                 )
 
-                if (audienceKeys.isNotEmpty()) {
+                if (isTeacher && teacherSections.isEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "You have no accepted section yet. On the web, open My Sections and accept your invite, or ask the admin to assign you to a class.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+
+                if (isTeacher && teacherSections.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "Section",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = AjesTextPrimary
+                    )
+                    Text(
+                        "Students in the selected section will receive this announcement.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = AjesTextSecondary,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
+                    )
+                    teacherSections.forEach { section ->
+                        val label = section.display_label.ifBlank { "Section #${section.id}" }
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable(enabled = !submitting) {
+                                    selectedSectionId = section.id
+                                    localError = null
+                                },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedSectionId == section.id,
+                                onClick = {
+                                    selectedSectionId = section.id
+                                    localError = null
+                                },
+                                enabled = !submitting
+                            )
+                            Text(label, style = MaterialTheme.typography.bodyMedium, color = AjesTextPrimary)
+                        }
+                    }
+                } else if (audienceKeys.isNotEmpty()) {
                     Spacer(Modifier.height(12.dp))
                     Text(
                         "Audience",
@@ -635,7 +810,7 @@ private fun CreateAnnouncementDialog(
         },
         confirmButton = {
             Button(
-                enabled = !submitting,
+                enabled = !submitting && (!isTeacher || teacherSections.isNotEmpty()),
                 onClick = {
                     val t = title.trim()
                     val b = body.trim()
@@ -643,11 +818,20 @@ private fun CreateAnnouncementDialog(
                         localError = "Title and message are required."
                         return@Button
                     }
+                    if (isTeacher && selectedSectionId < 1) {
+                        localError = "Please choose a section you handle."
+                        return@Button
+                    }
                     localError = null
                     scope.launch {
                         submitting = true
-                        val audience = selectedAudience.takeIf { audienceKeys.isNotEmpty() }
-                        repository.create(t, b, sectionId = null, audienceType = audience)
+                        val sectionId = if (isTeacher) selectedSectionId else null
+                        val audience = when {
+                            isTeacher -> "students-only"
+                            audienceKeys.isNotEmpty() -> selectedAudience
+                            else -> null
+                        }
+                        repository.create(t, b, sectionId = sectionId, audienceType = audience)
                             .onSuccess {
                                 onPublished()
                                 onDismiss()

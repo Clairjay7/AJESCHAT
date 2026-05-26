@@ -23,6 +23,9 @@ class NotificationsRepository(private val api: NotificationsApi) {
 class MobileRepository(private val api: MobileApi) {
     suspend fun summary(): Result<MobileSummaryData> = runCatching {
         val res = api.summary()
+        if (res.code() == 401) {
+            throw IllegalStateException("Session expired or not authorized. Please log out and sign in again.")
+        }
         if (!res.isSuccessful) throw HttpException(res)
         res.body()?.data ?: throw IllegalStateException("No summary")
     }
@@ -45,6 +48,18 @@ class StaffRepository(private val api: StaffApi) {
         val r = api.teacherHub()
         if (!r.isSuccessful) throw HttpException(r)
         r.body() ?: TeacherHubResponse()
+    }
+
+    suspend fun acceptSectionInvite(assignmentId: Int): Result<String> = runCatching {
+        val r = api.acceptSectionInvite(assignmentId)
+        if (!r.isSuccessful) throw HttpException(r)
+        r.body()?.message ?: "Section accepted."
+    }
+
+    suspend fun declineSectionInvite(assignmentId: Int): Result<String> = runCatching {
+        val r = api.declineSectionInvite(assignmentId)
+        if (!r.isSuccessful) throw HttpException(r)
+        r.body()?.message ?: "Invite declined."
     }
 
     suspend fun records(page: Int): Result<RecordsListResponse> = runCatching {

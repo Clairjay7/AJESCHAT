@@ -25,11 +25,26 @@ data class MobileSummaryData(
     @SerializedName("chat_logs") val chatLogs: Boolean = false,
     @SerializedName("user_management_read") val userManagementRead: Boolean = false,
     @SerializedName("sections_read") val sectionsRead: Boolean = false,
+    @SerializedName("sections") val sections: Boolean = false,
+    @SerializedName("academic_years") val academicYears: Boolean = false,
     @SerializedName("system_settings") val systemSettings: Boolean = false,
     @SerializedName("chatbot_management") val chatbotManagement: Boolean = false,
     @SerializedName("backup_restore") val backupRestore: Boolean = false,
     @SerializedName("security_logs") val securityLogs: Boolean = false,
+    @SerializedName("section_invites") val sectionInvites: List<SectionInviteRow> = emptyList(),
     @SerializedName("dashboard") val dashboard: MobileDashboardBundle? = null
+)
+
+data class SectionInviteRow(
+    @SerializedName("assignment_id") val assignmentId: Int = 0,
+    @SerializedName("section_id") val sectionId: Int = 0,
+    @SerializedName("section_name") val sectionName: String? = null,
+    @SerializedName("grade_level") val gradeLevel: String? = null,
+    @SerializedName("display_label") val displayLabel: String? = null,
+    @SerializedName("assignment_role") val assignmentRole: String? = null,
+    @SerializedName("role_label") val roleLabel: String? = null,
+    @SerializedName("subject_name") val subjectName: String? = null,
+    @SerializedName("status") val status: String? = null
 )
 
 data class MobileDashboardBundle(
@@ -44,7 +59,32 @@ data class MobileDashboardBundle(
     @SerializedName("section_label") val sectionLabel: String? = null,
     @SerializedName("has_section") val hasSection: Boolean? = null,
     @SerializedName("records_updated_today") val recordsUpdatedToday: Int? = null,
-    @SerializedName("active_mine") val activeMine: Int? = null
+    @SerializedName("active_mine") val activeMine: Int? = null,
+    @SerializedName("section_invites") val sectionInvites: List<SectionInviteRow> = emptyList(),
+    @SerializedName("section") val section: StudentSectionInfo? = null,
+    @SerializedName("classmates") val classmates: List<StudentClassmateRow> = emptyList(),
+    @SerializedName("teachers_by_subject") val teachersBySubject: List<StudentTeacherSubjectRow> = emptyList()
+)
+
+data class StudentSectionInfo(
+    @SerializedName("section_id") val sectionId: Int = 0,
+    @SerializedName("section_name") val sectionName: String? = null,
+    @SerializedName("grade_level") val gradeLevel: String? = null,
+    @SerializedName("display_label") val displayLabel: String? = null,
+    @SerializedName("adviser_name") val adviserName: String? = null
+)
+
+data class StudentClassmateRow(
+    @SerializedName("user_id") val userId: Int = 0,
+    @SerializedName("name") val name: String? = null,
+    @SerializedName("is_self") val isSelf: Boolean = false
+)
+
+data class StudentTeacherSubjectRow(
+    @SerializedName("subject") val subject: String? = null,
+    @SerializedName("teacher_name") val teacherName: String? = null,
+    @SerializedName("role_label") val roleLabel: String? = null,
+    @SerializedName("time_label") val timeLabel: String? = null
 )
 
 data class MobileDashboardKpi(

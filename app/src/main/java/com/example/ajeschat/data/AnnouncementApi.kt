@@ -12,7 +12,10 @@ interface AnnouncementApi {
     @GET("api/announcements")
     suspend fun getAnnouncements(
         @Query("date_from") dateFrom: String? = null,
-        @Query("date_to") dateTo: String? = null
+        @Query("date_to") dateTo: String? = null,
+        @Query("q") search: String? = null,
+        @Query("period") period: String? = null,
+        @Query("date") date: String? = null
     ): Response<AnnouncementsResponse>
 
     @POST("api/announcements")
@@ -31,6 +34,7 @@ interface AnnouncementApi {
 data class AnnouncementsResponse(
     val announcements: List<AnnouncementItem> = emptyList(),
     @SerializedName("can_manage") val canManage: Boolean = false,
+    @SerializedName("can_create") val canCreate: Boolean = false,
     val role: String? = null,
     @SerializedName("audience_options") val audienceOptions: Map<String, String>? = null,
     @SerializedName("teacher_sections") val teacherSections: List<TeacherSectionOption>? = null

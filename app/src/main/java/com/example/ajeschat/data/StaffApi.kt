@@ -3,6 +3,8 @@ package com.example.ajeschat.data
 import com.google.gson.annotations.SerializedName
 import retrofit2.Response
 import retrofit2.http.GET
+import retrofit2.http.POST
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface StaffApi {
@@ -14,6 +16,12 @@ interface StaffApi {
 
     @GET("api/teacher/hub")
     suspend fun teacherHub(): Response<TeacherHubResponse>
+
+    @POST("api/teacher/sections/accept/{id}")
+    suspend fun acceptSectionInvite(@Path("id") assignmentId: Int): Response<TeacherActionResponse>
+
+    @POST("api/teacher/sections/decline/{id}")
+    suspend fun declineSectionInvite(@Path("id") assignmentId: Int): Response<TeacherActionResponse>
 
     @GET("api/records/list")
     suspend fun records(@Query("page") page: Int): Response<RecordsListResponse>
@@ -54,9 +62,16 @@ data class TeacherHubRow(
     @SerializedName("section_id") val sectionId: Int = 0,
     @SerializedName("section_name") val sectionName: String? = null,
     @SerializedName("grade_level") val gradeLevel: String? = null,
+    @SerializedName("display_label") val displayLabel: String? = null,
     @SerializedName("status") val status: String? = null,
     @SerializedName("assignment_role") val assignmentRole: String? = null,
+    @SerializedName("role_label") val roleLabel: String? = null,
     @SerializedName("subject_name") val subjectName: String? = null
+)
+
+data class TeacherActionResponse(
+    @SerializedName("status") val status: String? = null,
+    @SerializedName("message") val message: String? = null
 )
 
 data class RecordsListResponse(

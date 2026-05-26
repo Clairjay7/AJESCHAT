@@ -23,7 +23,7 @@ import com.example.ajeschat.ui.login.LoginScreen
 import com.example.ajeschat.ui.login.LoginViewModel
 import com.example.ajeschat.ui.main.MainTabsScreen
 import com.example.ajeschat.ui.tools.StaffToolScreen
-import com.example.ajeschat.ui.tools.StaffToolScreen
+import com.example.ajeschat.ui.web.AjesWebScreen
 
 private const val NAV_ANIM_DURATION = 300
 
@@ -34,6 +34,30 @@ const val ROUTE_MAIN = "main"
 const val ROUTE_CHAT_LIST = ROUTE_MAIN
 const val ROUTE_CONVERSATION = "conversation/{userId}/{userName}/{userRole}"
 const val ROUTE_TOOLS = "tools/{toolId}"
+const val ROUTE_WEB_MODULE = "web/{moduleId}"
+
+fun webModuleRoute(moduleId: String): String = "web/$moduleId"
+
+/** AJES web paths loaded in-app (same as desktop). */
+object AjesWebModules {
+    const val SECTIONS = "sections"
+    const val ACADEMIC_YEARS = "academic_years"
+    const val REPORTS = "reports"
+
+    fun pathFor(moduleId: String): String? = when (moduleId) {
+        SECTIONS -> "admin/sections?embed=1"
+        ACADEMIC_YEARS -> "admin/academic-years?embed=1"
+        REPORTS -> "records?embed=1"
+        else -> null
+    }
+
+    fun titleFor(moduleId: String): String = when (moduleId) {
+        SECTIONS -> "Sections"
+        ACADEMIC_YEARS -> "Academic Years"
+        REPORTS -> "Reports"
+        else -> "AJES"
+    }
+}
 
 fun conversationRoute(userId: Int, userName: String, userRole: String): String {
     val encName = userName.replace(" ", "+")
@@ -93,6 +117,26 @@ fun AjesChatNavGraph(
                     }
                 }
             )
+        }
+        composable(
+            route = ROUTE_WEB_MODULE,
+            arguments = listOf(navArgument("moduleId") { type = NavType.StringType }),
+            enterTransition = { navTransitions.enter },
+            exitTransition = { navTransitions.exit },
+            popEnterTransition = { navTransitions.popEnter },
+            popExitTransition = { navTransitions.popExit }
+        ) { entry ->
+            val moduleId = entry.arguments?.getString("moduleId") ?: ""
+            val path = AjesWebModules.pathFor(moduleId)
+            if (path == null) {
+                AjesWebScreen(webPath = "dashboard/principal", title = "AJES", onBack = { navController.popBackStack() })
+            } else {
+                AjesWebScreen(
+                    webPath = path,
+                    title = AjesWebModules.titleFor(moduleId),
+                    onBack = { navController.popBackStack() }
+                )
+            }
         }
         composable(
             route = ROUTE_TOOLS,
